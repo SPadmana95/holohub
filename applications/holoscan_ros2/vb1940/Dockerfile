@@ -82,9 +82,12 @@ ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 # Set up deps directory and clone holoscan-sensor-bridge
 RUN mkdir -p /deps
 
-# Clone the public Holoscan Sensor Bridge repository
+# Clone the public Holoscan Sensor Bridge repository and checkout tag 2.5.0
+# (compatible with Holoscan SDK 3.9.0 — main branch requires SDK 4.0+)
 WORKDIR /deps
-RUN git clone https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git
+RUN git clone https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git \
+    && cd holoscan-sensor-bridge \
+    && git checkout tags/2.5.0
 
 # Build the holoscan-sensor-bridge C++ libraries
 WORKDIR /deps/holoscan-sensor-bridge

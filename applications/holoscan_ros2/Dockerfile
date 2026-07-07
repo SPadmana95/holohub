@@ -17,6 +17,9 @@
 
 FROM nvcr.io/nvidia/clara-holoscan/holoscan:v3.3.0-dgpu AS base
 
+# Force IPv4 for apt — prevents "Network is unreachable" on hosts without IPv6 routing
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 # Install basic dependencies
 RUN apt update && apt install -y \
     curl \

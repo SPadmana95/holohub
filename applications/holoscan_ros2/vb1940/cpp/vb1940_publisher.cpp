@@ -35,7 +35,7 @@
 #include <hololink/core/csi_controller.hpp>
 #include <hololink/core/data_channel.hpp>
 #include <hololink/core/enumerator.hpp>
-#include <hololink/core/tools.hpp>
+#include <hololink/common/tools.hpp>
 #include <hololink/operators/csi_to_bayer/csi_to_bayer.hpp>
 #include <hololink/operators/image_processor/image_processor.hpp>
 #include <hololink/operators/roce_receiver/roce_receiver_op.hpp>
@@ -296,7 +296,7 @@ int main(int argc, char** argv) {
 
   // Select the first available device to be the default
   std::string default_ibv_name;
-  auto infiniband_devices = hololink::core::infiniband_devices();
+  auto infiniband_devices = hololink::infiniband_devices();
   if (!infiniband_devices.empty())
     default_ibv_name = infiniband_devices[0];
 
@@ -338,7 +338,7 @@ int main(int argc, char** argv) {
     std::string arg_ibv_name =
         variables_map["ibv-name"].empty() ? "" : variables_map["ibv-name"].as<std::string>();
     if (arg_ibv_name.empty()) {
-      auto infiniband_devices = hololink::core::infiniband_devices();
+      auto infiniband_devices = hololink::infiniband_devices();
       if (infiniband_devices.empty()) {
         HOLOSCAN_LOG_ERROR("No InfiniBand devices found");
         return -1;

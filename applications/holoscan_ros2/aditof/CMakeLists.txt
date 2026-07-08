@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# holoscan_ros2 related applications
-# In each subdirectory, there is a set of related applications.
-# For example, pubsub directory contains applications that publish and subscribe to ROS2 topics.
-# vb1940 directory contains applications that publish and subscribe images from the vb1940 sensor.
-# aditof directory contains applications that publish and subscribe depth/AB/confidence images from the ADI ADTF3175 ToF sensor.
-add_holohub_application(pubsub DEPENDS OPERATORS holoscan_ros2)
-add_holohub_application(vb1940 DEPENDS OPERATORS holoscan_ros2)
-add_holohub_application(aditof DEPENDS OPERATORS holoscan_ros2)
+# aditof: ROS2 publisher and subscriber for ADI ADTF3175 Time-of-Flight sensor
+# Publishes Depth, Active Brightness (AB) and Confidence images to ROS2 topics.
+cmake_minimum_required(VERSION 3.20)
+project(aditof LANGUAGES NONE)
+
+# Add the cpp subdirectory
+if(HOLOHUB_BUILD_CPP)
+  add_subdirectory(cpp)
+endif()

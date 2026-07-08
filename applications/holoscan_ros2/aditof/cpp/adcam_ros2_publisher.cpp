@@ -364,7 +364,37 @@ int main(int argc, char** argv) {
 
   if (do_reset) {
     adcam_inst->adcam_reset_power_on();
+    // Print firmware versions after reset (matches adcam_player --resetAdcam behavior)
+    adcam_inst->switch_from_standard_to_burst();
+    auto print_fw = [](const std::string& label, const std::vector<uint8_t>& resp) {
+      if (resp.size() >= 4)
+        std::cout << label << " Firmware version = " << (int)resp[0] << "."
+                  << (int)resp[1] << "." << (int)resp[2] << "." << (int)resp[3] << std::endl;
+    };
+    print_fw("Master", adcam_inst->get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND));
+    print_fw("Slave",  adcam_inst->get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND));
+    adcam_inst->switch_from_burst_to_standard();
   }
+
+  // ── Probe sensor in main() before compose() ────────────────────────────────
+  // Mirrors adcam_player behavior: probe in main() caches imager type (raw=1 for ADSD3100)
+  // so that set_mode() inside compose() can find it. Without this pre-compose probe,
+  // set_mode() fails with "unsupported imager type (raw=0)".
+  if (!adcam_inst->probe_adcam_adtf3175()) {
+    HOLOSCAN_LOG_WARN("ADTF3175 not responding — attempting automatic reset and retry");
+    adcam_inst->adcam_reset_power_on();
+    if (!adcam_inst->probe_adcam_adtf3175()) {
+      HOLOSCAN_LOG_ERROR("ADTF3175 still not responding — check connections");
+      hololink->stop();
+      return EXIT_FAILURE;
+    }
+  }
+  HOLOSCAN_LOG_INFO("ADTF3175 Found");
+
+  // Read chip status and detect imager type (ADSD3100/ADTF3066).
+  // This sets imager_type_ internally so set_mode() in compose() works correctly.
+  adcam_inst->get_status();
+  adcam_inst->get_imager_type_and_ccb_version();
 
   if (!firmware_manifest.empty()) {
     hololink::Programmer::Args args;

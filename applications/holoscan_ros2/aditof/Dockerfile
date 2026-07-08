@@ -74,6 +74,10 @@ ENV VK_LOADER_DEBUG=all
 # Set PYTHONPATH to include ROS2 packages
 ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:/opt/nvidia/holoscan/python/lib
 
+# Add Holoscan shared libraries to runtime linker path
+# Required for libholoscan_core.so, libgxf_*.so etc. at application launch
+ENV LD_LIBRARY_PATH=/opt/nvidia/holoscan/lib:$LD_LIBRARY_PATH
+
 # Create necessary Vulkan directories
 RUN mkdir -p /usr/share/vulkan/icd.d /usr/share/vulkan/explicit_layer.d
 
@@ -84,13 +88,20 @@ exec "$@"' > /usr/bin/entrypoint.sh && chmod +x /usr/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
-# Clone Holoscan Sensor Bridge at tag 2.5.0
+# Clone Holoscan Sensor Bridge at tag 2.5.0 (public upstream)
 # (compatible with Holoscan SDK 3.9.0 — main branch requires SDK 4.0+)
 RUN mkdir -p /deps
 WORKDIR /deps
 RUN git clone https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git \
     && cd holoscan-sensor-bridge \
     && git checkout tags/2.5.0
+
+# Patch: add gpio_pin_count=16 for Microchip Polarfire board.
+# Without this patch --resetAdcam throws "GPIO is not supported on this Hololink board!"
+# The fix exists in the demo_HSB_ToF_ROS2 branch but was not included in the 2.5.0 release tag.
+RUN sed -i \
+    's|microchip_polarfire_metadata\["board_description"\] = "Microchip Polarfire";|microchip_polarfire_metadata["board_description"] = "Microchip Polarfire";\n    microchip_polarfire_metadata["gpio_pin_count"] = 16;|' \
+    /deps/holoscan-sensor-bridge/src/hololink/core/enumerator.cpp
 
 # Build holoscan-sensor-bridge C++ libraries
 WORKDIR /deps/holoscan-sensor-bridge

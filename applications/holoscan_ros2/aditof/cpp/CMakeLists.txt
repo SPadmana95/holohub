@@ -40,6 +40,8 @@ set(HOLOLINK_LIB_DIRS
     "${HOLOLINK_BUILD_DIR}/src/hololink/operators/linux_receiver"
     "${HOLOLINK_BUILD_DIR}/src/hololink/operators/roce_receiver"
     "${HOLOLINK_BUILD_DIR}/src/hololink/operators/image_processor"
+    "${HOLOLINK_BUILD_DIR}/src/hololink/sensors"
+    "${HOLOLINK_BUILD_DIR}/src/hololink/sensors/camera"
 )
 
 link_directories(${HOLOLINK_LIB_DIRS})
@@ -67,6 +69,9 @@ add_executable(holoscan_ros2_adcam_publisher
     adcam_unpack_op.cu
     adcam_lib.cpp
     programmer.cpp
+    adsd3500_flash.cpp
+    compute_crc.cpp
+    crc_table.cpp
 )
 
 target_link_libraries(holoscan_ros2_adcam_publisher PRIVATE
@@ -80,10 +85,17 @@ target_link_libraries(holoscan_ros2_adcam_publisher PRIVATE
     hololink::csi_to_bayer
     hololink_core
     base_receiver_op
-    linux_receiver
+    linux_receiver_op       # LinuxReceiverOp vtable
+    linux_receiver          # LinuxReceiver implementation
     roce_receiver
     image_processor
+    hololink_sensor         # Adcam sensor base
+    hololink_camera_sensor  # Camera sensor
     fmt
+    ibverbs                 # InfiniBand verbs (RoCE + IBV device enumeration)
+    curl                    # libcurl (used by programmer.cpp for firmware download)
+    ssl                     # OpenSSL (EVP_* hash functions in programmer.cpp)
+    crypto                  # OpenSSL crypto
 )
 
 target_include_directories(holoscan_ros2_adcam_publisher PRIVATE

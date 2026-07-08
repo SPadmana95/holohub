@@ -111,7 +111,9 @@ class AdiTofPublisherOp : public holoscan::Operator {
   }
 
  private:
-  using Publisher = rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr;
+  // Use Bridge::Publisher — bridge->create_publisher<T>() returns Bridge::Publisher<T>::SharedPtr,
+  // NOT rclcpp::Publisher<T>::SharedPtr (they are different wrapper types)
+  using Publisher = typename holoscan::ros2::Bridge::Publisher<sensor_msgs::msg::Image>::SharedPtr;
 
   void publish_tensor(nvidia::gxf::Entity& entity,
                       const std::string& tensor_name,
@@ -122,11 +124,11 @@ class AdiTofPublisherOp : public holoscan::Operator {
       HOLOSCAN_LOG_ERROR("AdiTofPublisherOp: tensor '{}' not found", tensor_name);
       return;
     }
-    auto* tensor = maybe_tensor.value();
+    auto tensor_handle = maybe_tensor.value();  // Handle<Tensor> — not a raw pointer
 
     // Shape: {height, width, 3} — uint8_t RGB (colorized by ADTFUnpackOp)
-    const int32_t height   = tensor->shape().dimension(0);
-    const int32_t width    = tensor->shape().dimension(1);
+    const int32_t height   = tensor_handle->shape().dimension(0);
+    const int32_t width    = tensor_handle->shape().dimension(1);
     const size_t  n_bytes  = static_cast<size_t>(height) * width * 3 * sizeof(uint8_t);
 
     sensor_msgs::msg::Image msg;
@@ -139,7 +141,7 @@ class AdiTofPublisherOp : public holoscan::Operator {
     msg.data.resize(n_bytes);
 
     // GPU → CPU transfer
-    cudaMemcpy(msg.data.data(), tensor->pointer(), n_bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(msg.data.data(), tensor_handle->pointer(), n_bytes, cudaMemcpyDeviceToHost);
     pub->publish(msg);
   }
 

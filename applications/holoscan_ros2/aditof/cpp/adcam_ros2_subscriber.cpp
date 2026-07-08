@@ -32,6 +32,7 @@
 #include <future>
 #include <chrono>
 #include <string>
+#include <getopt.h>
 
 #include <cuda.h>
 #include <cuda_runtime.h>

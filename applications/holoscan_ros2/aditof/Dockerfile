@@ -43,12 +43,16 @@ RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o 
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
 # Install ROS2 Jazzy and Vulkan support (required for HolovizOp in subscriber)
+# Also install libcurl and libssl required by programmer.cpp (firmware update)
 RUN apt update && apt install -y \
     ros-jazzy-desktop \
     ros-jazzy-ros-base \
     vulkan-tools \
     vulkan-validationlayers \
     libvulkan1 \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libibverbs-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set ROS2 environment variables

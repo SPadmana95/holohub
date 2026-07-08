@@ -100,19 +100,41 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 ## Running
 
+> **Note:** Use `--run-args` to pass arguments to the application executable.
+> This is the holohub-correct way — the `--` separator is not supported by the holohub CLI.
+
 ### Terminal 1 — Publisher
 
 ```sh
+# Default — stream depth/AB/confidence to ROS 2 topics
 ./holohub run aditof publisher --language cpp
+
+# Reset the ADI ToF sensor on startup (recommended on first run or after power cycle)
+./holohub run aditof publisher --language cpp --run-args="--resetAdcam 1"
+
+# Capture mode only (stream without reset)
+./holohub run aditof publisher --language cpp --run-args="--capture 1"
+
+# Set capture mode 3 and start streaming
+./holohub run aditof publisher --language cpp --run-args="--captureMode 3 --capture 1"
+
+# Update sensor firmware using manifest file
+./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate adi_manifest.yaml"
 ```
 
-Options:
+**All `--run-args` options:**
 
 | Option | Default | Description |
 |---|---|---|
-| `--hololink` | `192.168.0.2` | IP of the Hololink board |
-| `--ibv-name` | auto | IBV device (leave empty for Linux receiver) |
-| `--headless` | — | Run without display |
+| `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
+| `--captureMode <0-9>` | `6` | ADI capture mode |
+| `--capture <0/1>` | `0` | Start capture and stream |
+| `--resetAdcam <0/1>` | `0` | Reset the ADCAM sensor on startup |
+| `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
+| `--firmwareUpdate <yaml>` | — | Update sensor firmware using manifest file |
+| `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |
+| `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
+| `--ibv-port <n>` | `1` | IBV port |
 
 ### Terminal 2 — Subscriber (HolovizOp)
 

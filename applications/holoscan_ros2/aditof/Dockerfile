@@ -78,8 +78,19 @@ ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:/opt/nvidia/holoscan/
 # Required for libholoscan_core.so, libgxf_*.so etc. at application launch
 ENV LD_LIBRARY_PATH=/opt/nvidia/holoscan/lib:$LD_LIBRARY_PATH
 
-# Create necessary Vulkan directories
-RUN mkdir -p /usr/share/vulkan/icd.d /usr/share/vulkan/explicit_layer.d
+# Default X display — points to the primary monitor on the host.
+# Passed through to the container when holohub runner mounts /tmp/.X11-unix.
+ENV DISPLAY=:0
+
+# Create necessary Vulkan directories and fix ICD path.
+#
+# The NVIDIA Container Runtime injects:
+#   VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+# but on Jetson/Tegra the real ICD lives under tegra/nvidia bind-mount paths.
+# Create a symlink so the loader finds the correct driver at runtime.
+RUN mkdir -p /usr/share/vulkan/icd.d /usr/share/vulkan/explicit_layer.d && \
+    ln -sf /usr/lib/aarch64-linux-gnu/tegra/nvidia_icd.json \
+           /usr/share/vulkan/icd.d/nvidia_icd.json
 
 RUN echo -e '#!/bin/bash \n \
 set -e \n \

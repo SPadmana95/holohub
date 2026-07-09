@@ -144,12 +144,79 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 ### Alternative: RViz2
 
+#### Installation
+
+```sh
+sudo apt update
+sudo apt install -y ros-jazzy-rviz2
+
+# Verify
+source /opt/ros/jazzy/setup.bash
+rviz2 --version
+```
+
+#### Step-by-step: Add topics to RViz2
+
+**Step 1 — Start the publisher** (Terminal 1):
+```sh
+./holohub run aditof publisher --language cpp
+```
+
+**Step 2 — Launch RViz2** (Terminal 2):
 ```sh
 source /opt/ros/jazzy/setup.bash
 rviz2
-# Add Image display → Topic: /aditof/depth_image
-# Add Image display → Topic: /aditof/ab_image
-# Add Image display → Topic: /aditof/conf_image
+```
+
+**Step 3 — Fix QoS (required):**
+The publisher uses `RELIABLE` QoS but RViz2 defaults to `Best Effort`. In each
+Image display panel → click the **Topic** dropdown → change **Reliability Policy**
+from `Best Effort` to `Reliable`.
+
+**Step 4 — Add Depth Image:**
+1. Click **Add** (bottom-left) → **By topic** tab
+2. Find `/aditof/depth_image` → select **Image** → click **OK**
+3. Expand the display → **Topic** → set **Reliability Policy** to `Reliable`
+
+**Step 5 — Add AB Image:**
+1. Click **Add** → **By topic**
+2. Find `/aditof/ab_image` → select **Image** → click **OK**
+3. Set **Reliability Policy** to `Reliable`
+
+**Step 6 — Add Confidence Image:**
+1. Click **Add** → **By topic**
+2. Find `/aditof/conf_image` → select **Image** → click **OK**
+3. Set **Reliability Policy** to `Reliable`
+
+#### Launch RViz2 with all three topics at once
+
+```sh
+source /opt/ros/jazzy/setup.bash
+rviz2 -d - << 'EOF'
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Displays:
+    - Class: rviz_common/Image
+      Name: Depth
+      Topic:
+        Value: /aditof/depth_image
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+    - Class: rviz_common/Image
+      Name: AB
+      Topic:
+        Value: /aditof/ab_image
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+    - Class: rviz_common/Image
+      Name: Confidence
+      Topic:
+        Value: /aditof/conf_image
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+EOF
 ```
 
 ---

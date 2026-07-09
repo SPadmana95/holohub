@@ -224,7 +224,6 @@ class HoloscanApplication : public holoscan::Application {
         holoscan::Arg("headless", headless_),
         holoscan::Arg("fullscreen", fullscreen_),
         holoscan::Arg("framebuffer_srgb", true),
-        holoscan::Arg("enable_cuda_interop", true),
         holoscan::Arg("window_title", std::string("ADI ToF Subscriber")),
         holoscan::Arg("tensors",
             std::vector<holoscan::ops::HolovizOp::InputSpec>{
@@ -277,6 +276,15 @@ int main(int argc, char** argv) {
           << "  /aditof/conf_image    (8UC1)\n";
       return EXIT_SUCCESS;
     }
+  }
+
+  // Auto-enable headless mode when no display is available (Docker without X11 forwarding)
+  if (!headless &&
+      std::getenv("DISPLAY") == nullptr &&
+      std::getenv("WAYLAND_DISPLAY") == nullptr) {
+    HOLOSCAN_LOG_INFO(
+        "No DISPLAY or WAYLAND_DISPLAY detected — enabling headless (offscreen) mode.");
+    headless = true;
   }
 
   HoloscanApplication app(headless, fullscreen);

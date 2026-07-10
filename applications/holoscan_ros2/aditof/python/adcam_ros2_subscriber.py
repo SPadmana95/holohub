@@ -97,18 +97,21 @@ class HoloscanSubscriberApp(holoscan.core.Application):
             tensor_name="Depth",
             topic_name="aditof/depth_image",
             qos=10,
+            message_queue_max_size=1,
         )
         ab_sub = AdiTofSubscriberOp(
             self, bridge, name="ab_subscriber",
             tensor_name="ActiveBrightness",
             topic_name="aditof/ab_image",
             qos=10,
+            message_queue_max_size=1,
         )
         conf_sub = AdiTofSubscriberOp(
             self, bridge, name="conf_subscriber",
             tensor_name="Conf",
             topic_name="aditof/conf_image",
             qos=10,
+            message_queue_max_size=1,
         )
 
         # HolovizOp — side-by-side layout (mirrors adcam_player.py)

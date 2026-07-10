@@ -213,13 +213,18 @@ class Bridge(holoscan.core.Resource):
                 if not self.promise_queue.empty():
                     future = self.promise_queue.get()
                     future.set_result(message)
-                elif (
-                    self.message_queue_max_size == 0
-                    or self.message_queue.qsize() < self.message_queue_max_size
-                ):
+                elif self.message_queue_max_size == 0:
+                    self.message_queue.put(message)
+                elif self.message_queue.qsize() < self.message_queue_max_size:
                     self.message_queue.put(message)
                 else:
-                    holoscan.core.log_warn("Message queue is full, dropping message")
+                    # Bounded queue full: drop the oldest entry and enqueue the
+                    # latest so the consumer always sees the most recent message.
+                    try:
+                        self.message_queue.get_nowait()
+                    except Exception:
+                        pass
+                    self.message_queue.put(message)
 
         def receive(self):
             """Receive a message.

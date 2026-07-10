@@ -33,14 +33,14 @@
                         "publisher": {
                                 "description": "ROS2 publisher that captures Depth, AB and Confidence images from the ADI ADTF3175 ToF sensor via HSB and publishes them to /aditof/depth_image, /aditof/ab_image and /aditof/conf_image",
                                 "run": {
-                                        "command": "bash -c 'source /opt/ros/jazzy/setup.bash && PYTHONPATH=<holohub_bin>/python/lib:<holohub_app_source>:$PYTHONPATH python3 <holohub_app_source>/adcam_ros2_publisher.py'",
+                                        "command": "bash -c 'source /opt/ros/jazzy/setup.bash && PYTHONPATH=<holohub_bin>/python/lib:<holohub_app_source>:$PYTHONPATH python3 <holohub_app_source>/adcam_ros2_publisher.py \"$@\"' --",
                                         "workdir": "holohub_bin"
                                 }
                         },
                         "subscriber": {
                                 "description": "ROS2 subscriber that receives Depth, AB and Confidence images from the ADI ADTF3175 topics and visualizes them side-by-side using HolovizOp",
                                 "run": {
-                                        "command": "bash -c 'source /opt/ros/jazzy/setup.bash && PYTHONPATH=<holohub_bin>/python/lib:<holohub_app_source>:$PYTHONPATH python3 <holohub_app_source>/adcam_ros2_subscriber.py'",
+                                        "command": "bash -c 'source /opt/ros/jazzy/setup.bash && PYTHONPATH=<holohub_bin>/python/lib:<holohub_app_source>:$PYTHONPATH python3 <holohub_app_source>/adcam_ros2_subscriber.py \"$@\"' --",
                                         "workdir": "holohub_bin"
                                 }
                         }

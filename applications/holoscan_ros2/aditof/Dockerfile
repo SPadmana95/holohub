@@ -63,6 +63,8 @@ RUN apt update && apt install -y \
 # apt-managed package (which has no RECORD file and cannot be uninstalled by pip).
 # Python resolves /usr/local/lib before /usr/lib so the new wheel takes precedence.
 RUN pip3 install --ignore-installed scipy
+# Required by Python publisher firmware update (manifest download + YAML parse)
+RUN pip3 install requests pyyaml
 
 # Set ROS2 environment variables
 ENV ROS_DISTRO=jazzy

@@ -12,20 +12,27 @@ It extends `holoscan-sensor-bridge/examples/aditof/cpp/adcam_player` by replacin
 
 ```
 applications/holoscan_ros2/aditof/
-├── CMakeLists.txt              # Top-level build — C++ only
-├── README.md                   # This file
+├── CMakeLists.txt          # Top-level build — C++ only
+├── Dockerfile              # Shared container for C++ and Python
+├── adi_manifest.yaml       # Firmware manifest for ADI ADTF3175 sensor
+├── README.md               # This file
 ├── cpp/
-│   ├── CMakeLists.txt          # C++ build config
-│   ├── metadata.json           # Application metadata with publisher/subscriber modes
-│   ├── adcam_ros2_publisher.cpp  # Publisher: HSB → AdcamUnpackOp → ROS 2 topics
-│   └── adcam_ros2_subscriber.cpp # Subscriber: ROS 2 topics → HolovizOp
+│   ├── CMakeLists.txt                      # C++ build config
+│   ├── metadata.json                       # Application metadata with publisher/subscriber 
+│   ├── adcam_ros2_publisher.cpp            # Publisher: HSB → AdcamUnpackOp → ROS 2 topics
+│   ├── adcam_ros2_subscriber.cpp           # Subscriber: ROS 2 topics → HolovizOp
+│   ├── adcam_lib.cpp / .hpp                # ADCAM sensor library
+│   ├── adcam_unpack_op.cpp / .cu / .hpp    # ADI 5-byte/pixel unpack (CUDA)
+│   ├── adsd3500_flash.cpp / .hpp           # Firmware flash logic
+│   ├── programmer.cpp / .hpp               # Manifest-based firmware programmer
+│   ├── compute_crc.cpp / .hpp              # CRC-32 computation
+│   └── crc_table.cpp                       # CRC lookup table
 └── python/
-    ├── metadata.json             # Application metadata with publisher/subscriber modes
-    ├── adcam_ros2_publisher.py   # Publisher: HSB → ADTFUnpackOp → ROS 2 topics
-    ├── adcam_ros2_subscriber.py  # Subscriber: ROS 2 topics → HolovizOp
-    ├── adcam_unpack_op.py        # Shared: ADTFUnpackOp (unpack + colorize)
-    ├── adcam_player.py           # Standalone player (HolovizOp, no ROS 2)
-    └── adcam.py                  # ADI ADTF3175 sensor driver
+    ├── metadata.json               # Application metadata with publisher/subscriber modes
+    ├── adcam_ros2_publisher.py     # Publisher: HSB → ADTFUnpackOp → ROS 2 topics
+    ├── adcam_ros2_subscriber.py    # Subscriber: ROS 2 topics → HolovizOp
+    ├── adcam_unpack_op.py          # ADTFUnpackOp: unpack frames and colorize
+    └── adcam.py                    # ADI ADTF3175 sensor driver
 ```
 
 ---
@@ -97,8 +104,7 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ```sh
 # Build container (from holohub root) — used for both C++ and Python
 ./holohub build-container aditof --language cpp \
-  --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v3.9.0-cuda13 \
-  --build-args="--no-cache"
+  --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v3.9.0-cuda13
 
 # Launch container
 ./holohub run-container aditof --language cpp
@@ -145,6 +151,9 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ```sh
 # Set capture mode and start streaming
 ./holohub run aditof publisher --language python --run-args="--captureMode 3"
+
+# Update sensor firmware using manifest file
+./holohub run aditof publisher --language python --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
 ```
 
 **All `--run-args` options (Python):**
@@ -154,6 +163,8 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 | `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
 | `--captureMode <0-9>` | `6` | ADI capture mode |
 | `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
+| `--firmwareUpdate <yaml>` | — | Update sensor firmware using manifest file |
+| `--force` | — | Allow firmware downgrade (use with `--firmwareUpdate`) |
 | `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |
 | `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
 | `--ibv-port <n>` | `1` | IBV port |

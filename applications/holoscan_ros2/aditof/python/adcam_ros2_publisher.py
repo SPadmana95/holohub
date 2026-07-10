@@ -31,9 +31,13 @@ Pipeline:
 
 import argparse
 import ctypes
+import hashlib
 import logging
+import pydoc
 import sys
 
+import requests
+import yaml
 import cupy as cp
 import cuda.bindings.driver as cuda
 import holoscan
@@ -193,6 +197,10 @@ def main():
                         help="Stop after N frames (0 = unlimited)")
     parser.add_argument("--log-level", default="info",
                         help="Log level: trace/debug/info/warn/error (default info)")
+    parser.add_argument("--firmwareUpdate", default=None, metavar="YAML",
+                        help="Update sensor firmware using manifest YAML file")
+    parser.add_argument("--force", action="store_true",
+                        help="Allow firmware downgrade (requires --firmwareUpdate)")
 
     infiniband_devices = hololink_module.infiniband_devices()
     if infiniband_devices:
@@ -252,6 +260,70 @@ def main():
         if len(v) >= 4:
             print(f"{label} Firmware version = {v[0]}.{v[1]}.{v[2]}.{v[3]}")
     adcam_inst.switch_from_burst_to_standard()
+
+    # ── Firmware update via YAML manifest ─────────────────────────────────────
+    if args.firmwareUpdate is not None:
+        manifest_path = args.firmwareUpdate
+        if not __import__("os").path.exists(manifest_path):
+            print(f"Error: manifest file not found: {manifest_path}")
+            sys.exit(1)
+
+        print(f"Loading firmware manifest: {manifest_path}")
+        with open(manifest_path, "rt") as f:
+            manifest = yaml.safe_load(f)
+        section = manifest.get("hololink")
+        if section is None:
+            print("Error: manifest missing 'hololink' section")
+            sys.exit(1)
+
+        def _fetch_content(content_name):
+            meta = section["content"][content_name]
+            if "url" in meta:
+                print(f"Downloading {content_name} from {meta['url']} ...")
+                resp = requests.get(meta["url"],
+                                    headers={"Content-Type": "binary/octet-stream"},
+                                    timeout=120)
+                if resp.status_code != 200:
+                    raise RuntimeError(f'Unable to fetch "{meta["url"]}"; HTTP {resp.status_code}')
+                data = resp.content
+            elif "filename" in meta:
+                with open(meta["filename"], "rb") as fh:
+                    data = fh.read()
+            else:
+                raise RuntimeError(f"No source for content '{content_name}' in manifest")
+            if len(data) != meta["size"]:
+                raise RuntimeError(f"{content_name}: expected {meta['size']} bytes, got {len(data)}")
+            actual_md5 = hashlib.md5(data).hexdigest()
+            if actual_md5.lower() != meta["md5"].lower():
+                raise RuntimeError(f"{content_name}: MD5 mismatch (expected {meta['md5']}, got {actual_md5})")
+            return data
+
+        licenses = section.get("licenses")
+        if licenses and not args.force:
+            print("You must accept EULA terms in order to continue.")
+            input("To continue, press <Enter>: ")
+            for lic_name in licenses:
+                pydoc.pager(_fetch_content(lic_name).decode(errors="replace"))
+                answer = input("Press 'y' or 'Y' to accept this end user license agreement: ")
+                if not answer.strip().upper().startswith("Y"):
+                    print("EULA not accepted. Aborting.")
+                    hololink.stop()
+                    sys.exit(1)
+
+        content = {}
+        for img in section.get("images", []):
+            content[img["context"]] = _fetch_content(img["content"])
+
+        fw_bin = content.get("adcam")
+        if fw_bin is None:
+            print("Error: manifest has no 'adcam' context image")
+            sys.exit(1)
+
+        result = adcam_inst.adsd3500_flash(fw_bin, force=args.force)
+        print("Firmware update successful!" if result else "Firmware update failed.")
+        hololink.stop()
+        sys.exit(0 if result else 1)
+    # ── End firmware update ───────────────────────────────────────────────────
 
     if not adcam_inst.probe_adcam_adtf3175():
         logging.warning("ADTF3175 not responding after reset — retrying...")

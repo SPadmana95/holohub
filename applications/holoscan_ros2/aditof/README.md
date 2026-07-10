@@ -106,17 +106,8 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ### Terminal 1 — Publisher
 
 ```sh
-# Default — stream depth/AB/confidence to ROS 2 topics
-./holohub run aditof publisher --language cpp
-
-# Reset the ADI ToF sensor on startup (recommended on first run or after power cycle)
-./holohub run aditof publisher --language cpp --run-args="--resetAdcam 1"
-
-# Capture mode only (stream without reset)
-./holohub run aditof publisher --language cpp --run-args="--capture 1"
-
-# Set capture mode 3 and start streaming
-./holohub run aditof publisher --language cpp --run-args="--captureMode 3 --capture 1"
+# Set capture mode and start streaming
+./holohub run aditof publisher --language cpp --run-args="--captureMode 3"
 
 # Update sensor firmware using manifest file
 ./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate adi_manifest.yaml"
@@ -128,8 +119,6 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 |---|---|---|
 | `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
 | `--captureMode <0-9>` | `6` | ADI capture mode |
-| `--capture <0/1>` | `0` | Start capture and stream |
-| `--resetAdcam <0/1>` | `0` | Reset the ADCAM sensor on startup |
 | `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
 | `--firmwareUpdate <yaml>` | — | Update sensor firmware using manifest file |
 | `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |

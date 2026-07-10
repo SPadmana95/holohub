@@ -92,7 +92,7 @@ class AdiTofSubscriberOp
       }
       // Timeout — publisher not yet active, log once every ~5s then retry
       HOLOSCAN_LOG_DEBUG("AdiTofSubscriberOp [{}]: waiting for publisher on topic '{}'...",
-                         tensor_name_.get(), topic_name_.get());
+                         tensor_name_.get(), name());
     }
 
     if (!rclcpp::ok()) {
@@ -157,8 +157,6 @@ class AdiTofSubscriberOp
  private:
   holoscan::Parameter<std::shared_ptr<holoscan::Allocator>> pool_;
   holoscan::Parameter<std::string> tensor_name_;
-  // topic_name_ is declared in SubscriberOp base — exposed here for logging
-  holoscan::Parameter<std::string> topic_name_;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

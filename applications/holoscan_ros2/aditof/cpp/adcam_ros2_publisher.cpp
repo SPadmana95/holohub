@@ -288,7 +288,6 @@ int main(int argc, char** argv) {
   std::string ibv_name;
   uint32_t    ibv_port = 1;
   int32_t     reset_pin = 0;
-  bool        do_reset  = false;
   std::string firmware_manifest;
 
   // Auto-detect InfiniBand device (empty = use LinuxReceiverOp)
@@ -306,7 +305,6 @@ int main(int argc, char** argv) {
       {"hololink",       required_argument, nullptr, 0},
       {"ibv-name",       required_argument, nullptr, 0},
       {"ibv-port",       required_argument, nullptr, 0},
-      {"resetAdcam",     required_argument, nullptr, 0},
       {"resetPin",       required_argument, nullptr, 0},
       {"firmwareUpdate", required_argument, nullptr, 0},
       {"help",           no_argument,       nullptr, 'h'},
@@ -324,7 +322,6 @@ int main(int argc, char** argv) {
       else if (name == "hololink")       hololink_ip = arg;
       else if (name == "ibv-name")       ibv_name    = arg;
       else if (name == "ibv-port")       ibv_port    = std::stoul(arg);
-      else if (name == "resetAdcam")     do_reset    = std::stoi(arg) != 0;
       else if (name == "resetPin")       reset_pin   = std::stoi(arg);
       else if (name == "firmwareUpdate") firmware_manifest = arg;
     } else if (c == 'h') {
@@ -335,7 +332,6 @@ int main(int argc, char** argv) {
           << "  --ibv-name <dev>          IBV device (empty = LinuxReceiverOp)\n"
           << "  --ibv-port <n>            IBV port (default 1)\n"
           << "  --frame-limit <n>         Stop after N frames (0=unlimited)\n"
-          << "  --resetAdcam <0/1>        Reset ADCAM on startup\n"
           << "  --resetPin <0-31>         Reset pin number\n"
           << "  --firmwareUpdate <yaml>   Update firmware using manifest\n";
       return EXIT_SUCCESS;
@@ -362,19 +358,18 @@ int main(int argc, char** argv) {
   auto hololink = hololink_channel->hololink();
   hololink->start();
 
-  if (do_reset) {
-    adcam_inst->adcam_reset_power_on();
-    // Print firmware versions after reset (matches adcam_player --resetAdcam behavior)
-    adcam_inst->switch_from_standard_to_burst();
-    auto print_fw = [](const std::string& label, const std::vector<uint8_t>& resp) {
-      if (resp.size() >= 4)
-        std::cout << label << " Firmware version = " << (int)resp[0] << "."
-                  << (int)resp[1] << "." << (int)resp[2] << "." << (int)resp[3] << std::endl;
-    };
-    print_fw("Master", adcam_inst->get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND));
-    print_fw("Slave",  adcam_inst->get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND));
-    adcam_inst->switch_from_burst_to_standard();
-  }
+  // Always reset on startup — ensures the sensor is in a clean idle state
+  // regardless of any previous streaming session (crashed or clean exit).
+  adcam_inst->adcam_reset_power_on();
+  adcam_inst->switch_from_standard_to_burst();
+  auto print_fw = [](const std::string& label, const std::vector<uint8_t>& resp) {
+    if (resp.size() >= 4)
+      std::cout << label << " Firmware version = " << (int)resp[0] << "."
+                << (int)resp[1] << "." << (int)resp[2] << "." << (int)resp[3] << std::endl;
+  };
+  print_fw("Master", adcam_inst->get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND));
+  print_fw("Slave",  adcam_inst->get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND));
+  adcam_inst->switch_from_burst_to_standard();
 
   // ── Probe sensor in main() before compose() ────────────────────────────────
   // Mirrors adcam_player behavior: probe in main() caches imager type (raw=1 for ADSD3100)

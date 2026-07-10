@@ -110,7 +110,9 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ./holohub run aditof publisher --language cpp --run-args="--captureMode 3"
 
 # Update sensor firmware using manifest file
-./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate adi_manifest.yaml"
+# adi_manifest.yaml lives at applications/holoscan_ros2/aditof/adi_manifest.yaml
+# Use the absolute container path to avoid working-directory ambiguity
+./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
 ```
 
 **All `--run-args` options:**

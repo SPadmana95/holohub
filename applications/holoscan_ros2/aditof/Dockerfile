@@ -55,6 +55,15 @@ RUN apt update && apt install -y \
     libibverbs-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# The apt-installed scipy is compiled against NumPy 1.x but the base image ships
+# NumPy 2.x.  CuPy imports cupyx.scipy → scipy.sparse which triggers a
+# "numpy.dtype size changed" binary incompatibility at import time.
+# --ignore-installed installs a NumPy 2.x-compatible wheel into
+# /usr/local/lib/python3.12/dist-packages/ without trying to remove the
+# apt-managed package (which has no RECORD file and cannot be uninstalled by pip).
+# Python resolves /usr/local/lib before /usr/lib so the new wheel takes precedence.
+RUN pip3 install --ignore-installed scipy
+
 # Set ROS2 environment variables
 ENV ROS_DISTRO=jazzy
 ENV ROS_VERSION=2
@@ -71,8 +80,11 @@ ENV VK_LAYER_PATH=/usr/share/vulkan/explicit_layer.d
 ENV VK_LOADER_LAYERS_ENABLE=1
 ENV VK_LOADER_DEBUG=all
 
-# Set PYTHONPATH to include ROS2 packages
-ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:/opt/nvidia/holoscan/python/lib
+# Set PYTHONPATH to include ROS2 packages and holoscan_ros2 Python operators.
+# /workspace/holohub is bind-mounted at runtime by the holohub runner, so the
+# operators/holoscan_ros2/python path is available even though it is not present
+# during the image build.
+ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:/opt/nvidia/holoscan/python/lib:/workspace/holohub/operators/holoscan_ros2/python
 
 # Add Holoscan shared libraries to runtime linker path
 # Required for libholoscan_core.so, libgxf_*.so etc. at application launch

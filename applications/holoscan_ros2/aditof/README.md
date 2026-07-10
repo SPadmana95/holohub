@@ -14,11 +14,18 @@ It extends `holoscan-sensor-bridge/examples/aditof/cpp/adcam_player` by replacin
 applications/holoscan_ros2/aditof/
 ├── CMakeLists.txt              # Top-level build — C++ only
 ├── README.md                   # This file
-└── cpp/
-    ├── CMakeLists.txt          # C++ build config
-    ├── metadata.json           # Application metadata with publisher/subscriber modes
-    ├── aditof_publisher.cpp    # Publisher: HSB → AdcamUnpackOp → ROS 2 topics
-    └── aditof_subscriber.cpp   # Subscriber: ROS 2 topics → HolovizOp
+├── cpp/
+│   ├── CMakeLists.txt          # C++ build config
+│   ├── metadata.json           # Application metadata with publisher/subscriber modes
+│   ├── adcam_ros2_publisher.cpp  # Publisher: HSB → AdcamUnpackOp → ROS 2 topics
+│   └── adcam_ros2_subscriber.cpp # Subscriber: ROS 2 topics → HolovizOp
+└── python/
+    ├── metadata.json             # Application metadata with publisher/subscriber modes
+    ├── adcam_ros2_publisher.py   # Publisher: HSB → ADTFUnpackOp → ROS 2 topics
+    ├── adcam_ros2_subscriber.py  # Subscriber: ROS 2 topics → HolovizOp
+    ├── adcam_unpack_op.py        # Shared: ADTFUnpackOp (unpack + colorize)
+    ├── adcam_player.py           # Standalone player (HolovizOp, no ROS 2)
+    └── adcam.py                  # ADI ADTF3175 sensor driver
 ```
 
 ---
@@ -83,8 +90,12 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 ## Building
 
+> **Note:** The same container image and build step serve both C++ and Python.
+> `--language cpp` is used throughout because both language variants share the same
+> Dockerfile and there is nothing to compile for Python.
+
 ```sh
-# Build container (from holohub root)
+# Build container (from holohub root) — used for both C++ and Python
 ./holohub build-container aditof --language cpp \
   --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v3.9.0-cuda13 \
   --build-args="--no-cache"
@@ -92,7 +103,7 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 # Launch container
 ./holohub run-container aditof --language cpp
 
-# Inside container — build
+# Inside container — build C++ binaries (Python needs no build step)
 ./holohub build aditof --language cpp
 ```
 
@@ -105,6 +116,8 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 ### Terminal 1 — Publisher
 
+#### C++
+
 ```sh
 # Set capture mode and start streaming
 ./holohub run aditof publisher --language cpp --run-args="--captureMode 3"
@@ -115,7 +128,7 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
 ```
 
-**All `--run-args` options:**
+**All `--run-args` options (C++):**
 
 | Option | Default | Description |
 |---|---|---|
@@ -127,10 +140,40 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 | `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
 | `--ibv-port <n>` | `1` | IBV port |
 
+#### Python
+
+```sh
+# Set capture mode and start streaming
+./holohub run aditof publisher --language python --run-args="--captureMode 3"
+```
+
+**All `--run-args` options (Python):**
+
+| Option | Default | Description |
+|---|---|---|
+| `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
+| `--captureMode <0-9>` | `6` | ADI capture mode |
+| `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
+| `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |
+| `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
+| `--ibv-port <n>` | `1` | IBV port |
+| `--log-level <level>` | `info` | Log level: trace/debug/info/warn/error |
+
 ### Terminal 2 — Subscriber (HolovizOp)
+
+#### C++
 
 ```sh
 ./holohub run aditof subscriber --language cpp
+```
+
+#### Python
+
+```sh
+./holohub run aditof subscriber --language python
+
+# Run without a display (headless)
+./holohub run aditof subscriber --language python --run-args="--headless"
 ```
 
 ### Alternative: RViz2

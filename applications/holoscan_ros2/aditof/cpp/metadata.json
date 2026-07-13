@@ -24,9 +24,51 @@
                 ],
                 "tags": ["Robotics", "ROS2", "ToF", "ADI", "ADTF3175", "Publisher", "Subscriber", "DepthCamera"],
                 "ranking": 1,
-                "requirements": {},
+                "requirements": {
+                        "hardware": [
+                                {
+                                        "name": "Hololink FPGA Board",
+                                        "description": "Holoscan Sensor Bridge (HSB) hardware at 192.168.0.2"
+                                },
+                                {
+                                        "name": "ADI ADTF3175 ToF Sensor",
+                                        "description": "ADI ADTF3175 Time-of-Flight sensor with ADSD3100 or ADSD3066 imager connected to HSB"
+                                },
+                                {
+                                        "name": "NVIDIA AGX Thor",
+                                        "description": "JetPack 7.0 (LinuxReceiverOp) or JetPack 7.1+ (RoceReceiverOp)"
+                                }
+                        ]
+                },
                 "dependencies": {
-                        "external": {}
+                        "operators": [
+                                {
+                                        "name": "holoscan_ros2",
+                                        "version": "1.0.0"
+                                }
+                        ],
+                        "external": [
+                                {
+                                        "name": "ROS 2 Jazzy",
+                                        "version": "jazzy",
+                                        "description": "Robot Operating System 2 (Jazzy Jalisco)"
+                                },
+                                {
+                                        "name": "Holoscan Sensor Bridge",
+                                        "version": "2.5.0",
+                                        "description": "HSB SDK providing LinuxReceiverOp, CsiToBayerOp and sensor driver libraries"
+                                },
+                                {
+                                        "name": "CUDA Toolkit",
+                                        "version": "13.0",
+                                        "description": "Required for AdcamUnpackOp CUDA kernel (adcam_unpack_op.cu)"
+                                },
+                                {
+                                        "name": "sensor_msgs",
+                                        "version": "jazzy",
+                                        "description": "ROS 2 sensor_msgs package providing sensor_msgs/Image message type"
+                                }
+                        ]
                 },
                 "default_mode": "publisher",
                 "modes": {

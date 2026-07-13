@@ -86,16 +86,14 @@ class AdiTofPublisherOp : public holoscan::Operator {
     holoscan::Operator::initialize();
     auto bridge = ros2_bridge_.get();
 
-    depth_pub_ = bridge->create_publisher<sensor_msgs::msg::Image>(
-        "aditof/depth_image", rclcpp::QoS(10));
-    ab_pub_ = bridge->create_publisher<sensor_msgs::msg::Image>(
-        "aditof/ab_image", rclcpp::QoS(10));
-    conf_pub_ = bridge->create_publisher<sensor_msgs::msg::Image>(
-        "aditof/conf_image", rclcpp::QoS(10));
+    depth_pub_ =
+        bridge->create_publisher<sensor_msgs::msg::Image>("aditof/depth_image", rclcpp::QoS(10));
+    ab_pub_ = bridge->create_publisher<sensor_msgs::msg::Image>("aditof/ab_image", rclcpp::QoS(10));
+    conf_pub_ =
+        bridge->create_publisher<sensor_msgs::msg::Image>("aditof/conf_image", rclcpp::QoS(10));
   }
 
-  void compute(holoscan::InputContext& op_input,
-               holoscan::OutputContext& /*op_output*/,
+  void compute(holoscan::InputContext& op_input, holoscan::OutputContext& /*op_output*/,
                holoscan::ExecutionContext& /*context*/) override {
     auto entity = op_input.receive<holoscan::gxf::Entity>("input").value();
     auto& gxf_entity = static_cast<nvidia::gxf::Entity&>(entity);
@@ -105,9 +103,9 @@ class AdiTofPublisherOp : public holoscan::Operator {
     //   "Depth"            — Jet-colormap RGB visualization of depth
     //   "ActiveBrightness" — Grayscale-as-RGB visualization of AB (normalized to 4096)
     //   "Conf"             — Grayscale-as-RGB visualization of confidence (normalized to 255)
-    publish_tensor(gxf_entity, "Depth",            stamp, depth_pub_);
+    publish_tensor(gxf_entity, "Depth", stamp, depth_pub_);
     publish_tensor(gxf_entity, "ActiveBrightness", stamp, ab_pub_);
-    publish_tensor(gxf_entity, "Conf",             stamp, conf_pub_);
+    publish_tensor(gxf_entity, "Conf", stamp, conf_pub_);
   }
 
  private:
@@ -115,10 +113,8 @@ class AdiTofPublisherOp : public holoscan::Operator {
   // NOT rclcpp::Publisher<T>::SharedPtr (they are different wrapper types)
   using Publisher = typename holoscan::ros2::Bridge::Publisher<sensor_msgs::msg::Image>::SharedPtr;
 
-  void publish_tensor(nvidia::gxf::Entity& entity,
-                      const std::string& tensor_name,
-                      const rclcpp::Time& stamp,
-                      Publisher& pub) {
+  void publish_tensor(nvidia::gxf::Entity& entity, const std::string& tensor_name,
+                      const rclcpp::Time& stamp, Publisher& pub) {
     auto maybe_tensor = entity.get<nvidia::gxf::Tensor>(tensor_name.c_str());
     if (!maybe_tensor) {
       HOLOSCAN_LOG_ERROR("AdiTofPublisherOp: tensor '{}' not found", tensor_name);
@@ -127,17 +123,17 @@ class AdiTofPublisherOp : public holoscan::Operator {
     auto tensor_handle = maybe_tensor.value();  // Handle<Tensor> — not a raw pointer
 
     // Shape: {height, width, 3} — uint8_t RGB (colorized by ADTFUnpackOp)
-    const int32_t height   = tensor_handle->shape().dimension(0);
-    const int32_t width    = tensor_handle->shape().dimension(1);
-    const size_t  n_bytes  = static_cast<size_t>(height) * width * 3 * sizeof(uint8_t);
+    const int32_t height = tensor_handle->shape().dimension(0);
+    const int32_t width = tensor_handle->shape().dimension(1);
+    const size_t n_bytes = static_cast<size_t>(height) * width * 3 * sizeof(uint8_t);
 
     sensor_msgs::msg::Image msg;
-    msg.header.stamp    = stamp;
+    msg.header.stamp = stamp;
     msg.header.frame_id = frame_id_.get();
-    msg.height   = static_cast<uint32_t>(height);
-    msg.width    = static_cast<uint32_t>(width);
+    msg.height = static_cast<uint32_t>(height);
+    msg.width = static_cast<uint32_t>(width);
     msg.encoding = "rgb8";
-    msg.step     = static_cast<uint32_t>(width * 3);
+    msg.step = static_cast<uint32_t>(width * 3);
     msg.data.resize(n_bytes);
 
     // GPU → CPU transfer
@@ -160,13 +156,11 @@ class AdiTofPublisherOp : public holoscan::Operator {
 // ─────────────────────────────────────────────────────────────────────────────
 class HoloscanApplication : public holoscan::Application {
  public:
-  explicit HoloscanApplication(
-      CUcontext cuda_context,
-      int cuda_device_ordinal,
-      std::shared_ptr<hololink::DataChannel> hololink_channel,
-      const std::string& ibv_name, uint32_t ibv_port,
-      std::shared_ptr<hololink::sensors::Adcam> adcam_inst,
-      int64_t frame_limit)
+  explicit HoloscanApplication(CUcontext cuda_context, int cuda_device_ordinal,
+                               std::shared_ptr<hololink::DataChannel> hololink_channel,
+                               const std::string& ibv_name, uint32_t ibv_port,
+                               std::shared_ptr<hololink::sensors::Adcam> adcam_inst,
+                               int64_t frame_limit)
       : cuda_context_(cuda_context),
         cuda_device_ordinal_(cuda_device_ordinal),
         hololink_channel_(hololink_channel),
@@ -186,7 +180,8 @@ class HoloscanApplication : public holoscan::Application {
 
     // ── Memory pool for CSI → Bayer ────────────────────────────────────────
     auto csi_pool = make_resource<holoscan::BlockMemoryPool>(
-        "csi_to_bayer_pool", 1,
+        "csi_to_bayer_pool",
+        1,
         adcam_inst_->get_width() * adcam_inst_->get_height() * sizeof(uint16_t),
         2);
 
@@ -214,53 +209,55 @@ class HoloscanApplication : public holoscan::Application {
     std::shared_ptr<holoscan::Operator> receiver;
     if (!ibv_name_.empty()) {
       receiver = make_operator<hololink::operators::RoceReceiverOp>(
-          "receiver", condition,
+          "receiver",
+          condition,
           holoscan::Arg("frame_size", frame_size),
           holoscan::Arg("frame_context", cuda_context_),
           holoscan::Arg("ibv_name", ibv_name_),
           holoscan::Arg("ibv_port", ibv_port_),
           holoscan::Arg("hololink_channel", hololink_channel_.get()),
           holoscan::Arg("device_start", std::function<void()>([this] { adcam_inst_->start(); })),
-          holoscan::Arg("device_stop",  std::function<void()>([this] { adcam_inst_->stop();  })));
+          holoscan::Arg("device_stop", std::function<void()>([this] { adcam_inst_->stop(); })));
     } else {
       receiver = make_operator<hololink::operators::LinuxReceiverOp>(
-          "receiver", condition,
+          "receiver",
+          condition,
           holoscan::Arg("frame_size", frame_size),
           holoscan::Arg("frame_context", cuda_context_),
           holoscan::Arg("hololink_channel", hololink_channel_.get()),
           holoscan::Arg("device_start", std::function<void()>([this] { adcam_inst_->start(); })),
-          holoscan::Arg("device_stop",  std::function<void()>([this] { adcam_inst_->stop();  })));
+          holoscan::Arg("device_stop", std::function<void()>([this] { adcam_inst_->stop(); })));
     }
 
     // ── Memory pool for ADTFUnpackOp ───────────────────────────────────────
     const size_t pool_block_size =
         adcam_inst_->get_width() * adcam_inst_->get_height() * sizeof(uint16_t);
-    auto adtf_pool = make_resource<holoscan::BlockMemoryPool>(
-        "ADTF_output_pool", 1, pool_block_size, 8);
+    auto adtf_pool =
+        make_resource<holoscan::BlockMemoryPool>("ADTF_output_pool", 1, pool_block_size, 8);
 
     // ── ADTFUnpackOp — 5-byte/pixel → Depth / AB / Conf ───────────────────
     auto adtf_unpack = make_operator<hololink::operators::ADTFUnpackOp>(
         "ADIToF_data",
         holoscan::Arg("num_planes", 3),
-        holoscan::Arg("width",  static_cast<int>(adcam_inst_->get_pixel_width())),
+        holoscan::Arg("width", static_cast<int>(adcam_inst_->get_pixel_width())),
         holoscan::Arg("height", static_cast<int>(adcam_inst_->get_pixel_height())),
         holoscan::Arg("allocator", adtf_pool),
-        holoscan::Arg("in_tensor_name",  std::string("")),
+        holoscan::Arg("in_tensor_name", std::string("")),
         holoscan::Arg("out_tensor_name", std::string("output")));
 
     // ── ROS 2 Bridge and Publisher ─────────────────────────────────────────
-    auto ros2_bridge = make_resource<holoscan::ros2::Bridge>(
-        "aditof_publisher_resource", "aditof_publisher_node");
+    auto ros2_bridge =
+        make_resource<holoscan::ros2::Bridge>("aditof_publisher_resource", "aditof_publisher_node");
 
-    auto ros2_publisher = make_operator<AdiTofPublisherOp>(
-        "aditof_publisher",
-        holoscan::Arg("ros2_bridge", ros2_bridge),
-        holoscan::Arg("frame_id", std::string("aditof_optical")));
+    auto ros2_publisher =
+        make_operator<AdiTofPublisherOp>("aditof_publisher",
+                                         holoscan::Arg("ros2_bridge", ros2_bridge),
+                                         holoscan::Arg("frame_id", std::string("aditof_optical")));
 
     // ── Data flow ──────────────────────────────────────────────────────────
-    add_flow(receiver,     csi_to_bayer, {{"output", "input"}});
-    add_flow(csi_to_bayer, adtf_unpack,  {{"output", "input"}});
-    add_flow(adtf_unpack,  ros2_publisher, {{"output", "input"}});
+    add_flow(receiver, csi_to_bayer, {{"output", "input"}});
+    add_flow(csi_to_bayer, adtf_unpack, {{"output", "input"}});
+    add_flow(adtf_unpack, ros2_publisher, {{"output", "input"}});
   }
 
  private:
@@ -282,58 +279,62 @@ int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
 
   // ── Defaults ───────────────────────────────────────────────────────────────
-  int32_t     adcam_mode  = 6;
-  int64_t     frame_limit = 0;
+  int32_t adcam_mode = 6;
+  int64_t frame_limit = 0;
   std::string hololink_ip = "192.168.0.2";
   std::string ibv_name;
-  uint32_t    ibv_port = 1;
-  int32_t     reset_pin = 0;
+  uint32_t ibv_port = 1;
+  int32_t reset_pin = 0;
   std::string firmware_manifest;
 
   // Auto-detect InfiniBand device (empty = use LinuxReceiverOp)
   try {
     auto devices = hololink::infiniband_devices();
     ibv_name = devices.empty() ? "" : devices[0];
-  } catch (...) {
-    ibv_name = "";
-  }
+  } catch (...) { ibv_name = ""; }
 
   // ── CLI parsing ────────────────────────────────────────────────────────────
-  const struct option long_options[] = {
-      {"captureMode",    required_argument, nullptr, 0},
-      {"frame-limit",    required_argument, nullptr, 0},
-      {"hololink",       required_argument, nullptr, 0},
-      {"ibv-name",       required_argument, nullptr, 0},
-      {"ibv-port",       required_argument, nullptr, 0},
-      {"resetPin",       required_argument, nullptr, 0},
-      {"firmwareUpdate", required_argument, nullptr, 0},
-      {"help",           no_argument,       nullptr, 'h'},
-      {nullptr, 0, nullptr, 0}};
+  const struct option long_options[] = {{"captureMode", required_argument, nullptr, 0},
+                                        {"frame-limit", required_argument, nullptr, 0},
+                                        {"hololink", required_argument, nullptr, 0},
+                                        {"ibv-name", required_argument, nullptr, 0},
+                                        {"ibv-port", required_argument, nullptr, 0},
+                                        {"resetPin", required_argument, nullptr, 0},
+                                        {"firmwareUpdate", required_argument, nullptr, 0},
+                                        {"help", no_argument, nullptr, 'h'},
+                                        {nullptr, 0, nullptr, 0}};
 
   while (true) {
     int idx = 0;
-    int c   = getopt_long(argc, argv, "h", long_options, &idx);
-    if (c == -1) break;
+    int c = getopt_long(argc, argv, "h", long_options, &idx);
+    if (c == -1)
+      break;
     const std::string arg(optarg ? optarg : "");
     if (c == 0) {
       const std::string name(long_options[idx].name);
-      if (name == "captureMode")    adcam_mode  = std::stoi(arg);
-      else if (name == "frame-limit")    frame_limit = std::stoll(arg);
-      else if (name == "hololink")       hololink_ip = arg;
-      else if (name == "ibv-name")       ibv_name    = arg;
-      else if (name == "ibv-port")       ibv_port    = std::stoul(arg);
-      else if (name == "resetPin")       reset_pin   = std::stoi(arg);
-      else if (name == "firmwareUpdate") firmware_manifest = arg;
+      if (name == "captureMode")
+        adcam_mode = std::stoi(arg);
+      else if (name == "frame-limit")
+        frame_limit = std::stoll(arg);
+      else if (name == "hololink")
+        hololink_ip = arg;
+      else if (name == "ibv-name")
+        ibv_name = arg;
+      else if (name == "ibv-port")
+        ibv_port = std::stoul(arg);
+      else if (name == "resetPin")
+        reset_pin = std::stoi(arg);
+      else if (name == "firmwareUpdate")
+        firmware_manifest = arg;
     } else if (c == 'h') {
-      std::cout
-          << "Usage: holoscan_ros2_aditof_publisher [options]\n"
-          << "  --captureMode <0-9>       ADI capture mode (default 6)\n"
-          << "  --hololink <ip>           Hololink board IP (default 192.168.0.2)\n"
-          << "  --ibv-name <dev>          IBV device (empty = LinuxReceiverOp)\n"
-          << "  --ibv-port <n>            IBV port (default 1)\n"
-          << "  --frame-limit <n>         Stop after N frames (0=unlimited)\n"
-          << "  --resetPin <0-31>         Reset pin number\n"
-          << "  --firmwareUpdate <yaml>   Update firmware using manifest\n";
+      std::cout << "Usage: holoscan_ros2_aditof_publisher [options]\n"
+                << "  --captureMode <0-9>       ADI capture mode (default 6)\n"
+                << "  --hololink <ip>           Hololink board IP (default 192.168.0.2)\n"
+                << "  --ibv-name <dev>          IBV device (empty = LinuxReceiverOp)\n"
+                << "  --ibv-port <n>            IBV port (default 1)\n"
+                << "  --frame-limit <n>         Stop after N frames (0=unlimited)\n"
+                << "  --resetPin <0-31>         Reset pin number\n"
+                << "  --firmwareUpdate <yaml>   Update firmware using manifest\n";
       return EXIT_SUCCESS;
     }
   }
@@ -351,8 +352,7 @@ int main(int argc, char** argv) {
 
   // ── Create ADCAM instance ──────────────────────────────────────────────────
   auto adcam_inst = std::make_shared<hololink::sensors::Adcam>(
-      hololink_channel, hololink::CAM_I2C_BUS,
-      channel_metadata, adcam_mode, reset_pin);
+      hololink_channel, hololink::CAM_I2C_BUS, channel_metadata, adcam_mode, reset_pin);
 
   // ── Start Hololink ─────────────────────────────────────────────────────────
   auto hololink = hololink_channel->hololink();
@@ -364,11 +364,11 @@ int main(int argc, char** argv) {
   adcam_inst->switch_from_standard_to_burst();
   auto print_fw = [](const std::string& label, const std::vector<uint8_t>& resp) {
     if (resp.size() >= 4)
-      std::cout << label << " Firmware version = " << (int)resp[0] << "."
-                << (int)resp[1] << "." << (int)resp[2] << "." << (int)resp[3] << std::endl;
+      std::cout << label << " Firmware version = " << (int)resp[0] << "." << (int)resp[1] << "."
+                << (int)resp[2] << "." << (int)resp[3] << std::endl;
   };
   print_fw("Master", adcam_inst->get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND));
-  print_fw("Slave",  adcam_inst->get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND));
+  print_fw("Slave", adcam_inst->get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND));
   adcam_inst->switch_from_burst_to_standard();
 
   // ── Probe sensor in main() before compose() ────────────────────────────────
@@ -393,7 +393,7 @@ int main(int argc, char** argv) {
 
   if (!firmware_manifest.empty()) {
     hololink::Programmer::Args args;
-    args.manifest   = firmware_manifest;
+    args.manifest = firmware_manifest;
     args.hololink_ip = hololink_ip;
     hololink::Programmer programmer(args, args.manifest);
     programmer.fetch_manifest("hololink");
@@ -406,8 +406,8 @@ int main(int argc, char** argv) {
   }
 
   // ── Run application ────────────────────────────────────────────────────────
-  HoloscanApplication app(cu_context, 0, hololink_channel,
-                           ibv_name, ibv_port, adcam_inst, frame_limit);
+  HoloscanApplication app(
+      cu_context, 0, hololink_channel, ibv_name, ibv_port, adcam_inst, frame_limit);
   app.run();
 
   hololink->stop();

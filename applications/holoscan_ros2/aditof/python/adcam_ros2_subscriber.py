@@ -27,7 +27,6 @@ and displays them side-by-side using HolovizOp.
 import argparse
 import concurrent.futures
 import logging
-import sys
 
 import cupy as cp
 import holoscan
@@ -90,24 +89,31 @@ class HoloscanSubscriberApp(holoscan.core.Application):
 
     def compose(self):
         bridge = Bridge.from_node_name(
-            self, "aditof_subscriber_node", name="aditof_subscriber_resource")
+            self, "aditof_subscriber_node", name="aditof_subscriber_resource"
+        )
 
         depth_sub = AdiTofSubscriberOp(
-            self, bridge, name="depth_subscriber",
+            self,
+            bridge,
+            name="depth_subscriber",
             tensor_name="Depth",
             topic_name="aditof/depth_image",
             qos=10,
             message_queue_max_size=1,
         )
         ab_sub = AdiTofSubscriberOp(
-            self, bridge, name="ab_subscriber",
+            self,
+            bridge,
+            name="ab_subscriber",
             tensor_name="ActiveBrightness",
             topic_name="aditof/ab_image",
             qos=10,
             message_queue_max_size=1,
         )
         conf_sub = AdiTofSubscriberOp(
-            self, bridge, name="conf_subscriber",
+            self,
+            bridge,
+            name="conf_subscriber",
             tensor_name="Conf",
             topic_name="aditof/conf_image",
             qos=10,
@@ -116,25 +122,29 @@ class HoloscanSubscriberApp(holoscan.core.Application):
 
         # HolovizOp — side-by-side layout (mirrors adcam_player.py)
         depth_spec = holoscan.operators.HolovizOp.InputSpec(
-            "Depth", holoscan.operators.HolovizOp.InputType.COLOR)
+            "Depth", holoscan.operators.HolovizOp.InputType.COLOR
+        )
         v = holoscan.operators.HolovizOp.InputSpec.View()
         v.offset_x, v.offset_y, v.width, v.height = 0.0, 0.0, 0.33, 1.0
         depth_spec.views = [v]
 
         ab_spec = holoscan.operators.HolovizOp.InputSpec(
-            "ActiveBrightness", holoscan.operators.HolovizOp.InputType.COLOR)
+            "ActiveBrightness", holoscan.operators.HolovizOp.InputType.COLOR
+        )
         v2 = holoscan.operators.HolovizOp.InputSpec.View()
         v2.offset_x, v2.offset_y, v2.width, v2.height = 0.33, 0.0, 0.33, 1.0
         ab_spec.views = [v2]
 
         conf_spec = holoscan.operators.HolovizOp.InputSpec(
-            "Conf", holoscan.operators.HolovizOp.InputType.COLOR)
+            "Conf", holoscan.operators.HolovizOp.InputType.COLOR
+        )
         v3 = holoscan.operators.HolovizOp.InputSpec.View()
         v3.offset_x, v3.offset_y, v3.width, v3.height = 0.66, 0.0, 0.34, 1.0
         conf_spec.views = [v3]
 
         visualizer = holoscan.operators.HolovizOp(
-            self, name="holoviz",
+            self,
+            name="holoviz",
             headless=self._headless,
             fullscreen=self._fullscreen,
             framebuffer_srgb=True,
@@ -143,28 +153,28 @@ class HoloscanSubscriberApp(holoscan.core.Application):
         )
 
         self.add_flow(depth_sub, visualizer, {("output", "receivers")})
-        self.add_flow(ab_sub,    visualizer, {("output", "receivers")})
-        self.add_flow(conf_sub,  visualizer, {("output", "receivers")})
+        self.add_flow(ab_sub, visualizer, {("output", "receivers")})
+        self.add_flow(conf_sub, visualizer, {("output", "receivers")})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  main
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(
-        description="ADI ADTF3175 Holoscan ROS 2 Subscriber"
+    parser = argparse.ArgumentParser(description="ADI ADTF3175 Holoscan ROS 2 Subscriber")
+    parser.add_argument("--headless", action="store_true", help="Run without display window")
+    parser.add_argument("--fullscreen", action="store_true", help="Run fullscreen")
+    parser.add_argument(
+        "--log-level", default="info", help="Log level: trace/debug/info/warn/error (default info)"
     )
-    parser.add_argument("--headless", action="store_true",
-                        help="Run without display window")
-    parser.add_argument("--fullscreen", action="store_true",
-                        help="Run fullscreen")
-    parser.add_argument("--log-level", default="info",
-                        help="Log level: trace/debug/info/warn/error (default info)")
     args = parser.parse_args()
 
     _log_map = {
-        "trace": logging.DEBUG, "debug": logging.DEBUG,
-        "info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR,
+        "trace": logging.DEBUG,
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warn": logging.WARNING,
+        "error": logging.ERROR,
     }
     logging.basicConfig(level=_log_map.get(args.log_level.lower(), logging.INFO))
 

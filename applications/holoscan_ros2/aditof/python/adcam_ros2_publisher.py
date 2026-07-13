@@ -36,19 +36,18 @@ import logging
 import pydoc
 import sys
 
+import adcam
+import cuda.bindings.driver as cuda
+import cupy as cp
+import hololink as hololink_module
+import holoscan
+import rclpy
 import requests
 import yaml
-import cupy as cp
-import cuda.bindings.driver as cuda
-import holoscan
-import hololink as hololink_module
-import rclpy
+from adcam_unpack_op import ADTFUnpackOp
 from holoscan_ros2.bridge import Bridge
 from holoscan_ros2.operator import Operator as ROS2Operator
 from sensor_msgs.msg import Image
-
-import adcam
-from adcam_unpack_op import ADTFUnpackOp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -68,8 +67,8 @@ class AdiTofPublisherOp(ROS2Operator):
         super().initialize()
         bridge = self.ros2_bridge()
         self._depth_pub = bridge.create_publisher(Image, "aditof/depth_image", 10)
-        self._ab_pub    = bridge.create_publisher(Image, "aditof/ab_image",     10)
-        self._conf_pub  = bridge.create_publisher(Image, "aditof/conf_image",   10)
+        self._ab_pub = bridge.create_publisher(Image, "aditof/ab_image", 10)
+        self._conf_pub = bridge.create_publisher(Image, "aditof/conf_image", 10)
 
     def _to_image_msg(self, tensor):
         """Convert a CuPy (H, W, 3) uint8 array to sensor_msgs/Image (rgb8)."""
@@ -78,7 +77,7 @@ class AdiTofPublisherOp(ROS2Operator):
         msg = Image()
         msg.header.frame_id = self._frame_id
         msg.height = h
-        msg.width  = w
+        msg.width = w
         msg.encoding = "rgb8"
         msg.is_bigendian = False
         msg.step = w * 3
@@ -96,8 +95,16 @@ class AdiTofPublisherOp(ROS2Operator):
 #  HoloscanPublisherApp
 # ─────────────────────────────────────────────────────────────────────────────
 class HoloscanPublisherApp(holoscan.core.Application):
-    def __init__(self, cuda_context, cuda_device_ordinal, hololink_channel,
-                 ibv_name, ibv_port, adcam_inst, frame_limit):
+    def __init__(
+        self,
+        cuda_context,
+        cuda_device_ordinal,
+        hololink_channel,
+        ibv_name,
+        ibv_port,
+        adcam_inst,
+        frame_limit,
+    ):
         super().__init__()
         self._cuda_context = cuda_context
         self._cuda_device_ordinal = cuda_device_ordinal
@@ -111,21 +118,26 @@ class HoloscanPublisherApp(holoscan.core.Application):
         # Condition
         if self._frame_limit:
             condition = holoscan.conditions.CountCondition(
-                self, name="count", count=self._frame_limit)
+                self, name="count", count=self._frame_limit
+            )
         else:
-            condition = holoscan.conditions.BooleanCondition(
-                self, name="ok", enable_tick=True)
+            condition = holoscan.conditions.BooleanCondition(self, name="ok", enable_tick=True)
 
         # CSI → Bayer pool + operator
         csi_pool = holoscan.resources.BlockMemoryPool(
-            self, name="csi_pool", storage_type=1,
-            block_size=(self._adcam_inst.get_width()
-                        * ctypes.sizeof(ctypes.c_uint16)
-                        * self._adcam_inst.get_height()),
+            self,
+            name="csi_pool",
+            storage_type=1,
+            block_size=(
+                self._adcam_inst.get_width()
+                * ctypes.sizeof(ctypes.c_uint16)
+                * self._adcam_inst.get_height()
+            ),
             num_blocks=2,
         )
         csi_to_bayer = hololink_module.operators.CsiToBayerOp(
-            self, name="csi_to_bayer",
+            self,
+            name="csi_to_bayer",
             allocator=csi_pool,
             cuda_device_ordinal=self._cuda_device_ordinal,
         )
@@ -144,7 +156,9 @@ class HoloscanPublisherApp(holoscan.core.Application):
         # Receiver (ROCE or Linux)
         if self._ibv_name is not None:
             receiver = hololink_module.operators.RoceReceiverOp(
-                self, condition, name="receiver",
+                self,
+                condition,
+                name="receiver",
                 frame_size=frame_size,
                 frame_context=self._cuda_context,
                 ibv_name=self._ibv_name,
@@ -154,7 +168,9 @@ class HoloscanPublisherApp(holoscan.core.Application):
             )
         else:
             receiver = hololink_module.operators.LinuxReceiverOperator(
-                self, condition, name="receiver",
+                self,
+                condition,
+                name="receiver",
                 frame_size=frame_size,
                 frame_context=self._cuda_context,
                 hololink_channel=self._hololink_channel,
@@ -163,62 +179,73 @@ class HoloscanPublisherApp(holoscan.core.Application):
 
         # Unpack 5-byte/pixel → Depth / AB / Conf rgb8 planes
         adtf_unpack = ADTFUnpackOp(
-            self, name="ADIToF_data", no_of_planes=3,
+            self,
+            name="ADIToF_data",
+            no_of_planes=3,
             width=self._adcam_inst.get_pixel_width(),
             height=self._adcam_inst.get_pixel_height(),
         )
 
         # ROS 2 bridge + publisher operator
         bridge = Bridge.from_node_name(
-            self, "aditof_publisher_node", name="aditof_publisher_resource")
+            self, "aditof_publisher_node", name="aditof_publisher_resource"
+        )
         ros2_publisher = AdiTofPublisherOp(
-            self, bridge, name="aditof_publisher", frame_id="aditof_optical")
+            self, bridge, name="aditof_publisher", frame_id="aditof_optical"
+        )
 
         # Pipeline
-        self.add_flow(receiver,     csi_to_bayer,  {("output", "input")})
-        self.add_flow(csi_to_bayer, adtf_unpack,   {("output", "input")})
-        self.add_flow(adtf_unpack,  ros2_publisher, {("output", "input")})
+        self.add_flow(receiver, csi_to_bayer, {("output", "input")})
+        self.add_flow(csi_to_bayer, adtf_unpack, {("output", "input")})
+        self.add_flow(adtf_unpack, ros2_publisher, {("output", "input")})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  main
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(
-        description="ADI ADTF3175 Holoscan ROS 2 Publisher"
+    parser = argparse.ArgumentParser(description="ADI ADTF3175 Holoscan ROS 2 Publisher")
+    parser.add_argument(
+        "--captureMode", type=int, default=6, help="ADI capture mode (0-9, default 6)"
     )
-    parser.add_argument("--captureMode", type=int, default=6,
-                        help="ADI capture mode (0-9, default 6)")
-    parser.add_argument("--resetPin", type=int, default=0,
-                        help="GPIO reset pin (0-31, default 0)")
-    parser.add_argument("--hololink", default="192.168.0.2",
-                        help="Hololink board IP (default 192.168.0.2)")
-    parser.add_argument("--frame-limit", type=int, default=0,
-                        help="Stop after N frames (0 = unlimited)")
-    parser.add_argument("--log-level", default="info",
-                        help="Log level: trace/debug/info/warn/error (default info)")
-    parser.add_argument("--firmwareUpdate", default=None, metavar="YAML",
-                        help="Update sensor firmware using manifest YAML file")
-    parser.add_argument("--force", action="store_true",
-                        help="Allow firmware downgrade (requires --firmwareUpdate)")
+    parser.add_argument("--resetPin", type=int, default=0, help="GPIO reset pin (0-31, default 0)")
+    parser.add_argument(
+        "--hololink", default="192.168.0.2", help="Hololink board IP (default 192.168.0.2)"
+    )
+    parser.add_argument(
+        "--frame-limit", type=int, default=0, help="Stop after N frames (0 = unlimited)"
+    )
+    parser.add_argument(
+        "--log-level", default="info", help="Log level: trace/debug/info/warn/error (default info)"
+    )
+    parser.add_argument(
+        "--firmwareUpdate",
+        default=None,
+        metavar="YAML",
+        help="Update sensor firmware using manifest YAML file",
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Allow firmware downgrade (requires --firmwareUpdate)"
+    )
 
     infiniband_devices = hololink_module.infiniband_devices()
     if infiniband_devices:
-        parser.add_argument("--ibv-name", default=infiniband_devices[0],
-                            help="IBV device to use")
-        parser.add_argument("--ibv-port", type=int, default=1,
-                            help="IBV port number")
+        parser.add_argument("--ibv-name", default=infiniband_devices[0], help="IBV device to use")
+        parser.add_argument("--ibv-port", type=int, default=1, help="IBV port number")
     else:
-        parser.add_argument("--ibv-name", default=None,
-                            help="Network device (None = LinuxReceiverOp)")
-        parser.add_argument("--ibv-port", type=int, default=0,
-                            help="Port number")
+        parser.add_argument(
+            "--ibv-name", default=None, help="Network device (None = LinuxReceiverOp)"
+        )
+        parser.add_argument("--ibv-port", type=int, default=0, help="Port number")
 
     args = parser.parse_args()
 
     _log_map = {
-        "trace": logging.DEBUG, "debug": logging.DEBUG,
-        "info": logging.INFO, "warn": logging.WARNING, "error": logging.ERROR,
+        "trace": logging.DEBUG,
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warn": logging.WARNING,
+        "error": logging.ERROR,
     }
     logging.basicConfig(level=_log_map.get(args.log_level.lower(), logging.INFO))
 
@@ -243,8 +270,11 @@ def main():
     channel_metadata = hololink_module.Enumerator.find_channel(channel_ip=args.hololink)
     hololink_channel = hololink_module.DataChannel(channel_metadata)
     adcam_inst = adcam.adcam(
-        hololink_channel, hololink_module.CAM_I2C_BUS, channel_metadata,
-        adcam_mode=args.captureMode, reset_pin=args.resetPin,
+        hololink_channel,
+        hololink_module.CAM_I2C_BUS,
+        channel_metadata,
+        adcam_mode=args.captureMode,
+        reset_pin=args.resetPin,
     )
 
     hololink = hololink_channel.hololink()
@@ -254,8 +284,10 @@ def main():
     logging.info("Performing power-on reset...")
     adcam_inst.adcam_reset_power_on()
     adcam_inst.switch_from_standard_to_burst()
-    for label, cmd in [("Master", adcam.GET_MASTER_FIRMWARE_COMMAND),
-                       ("Slave",  adcam.GET_SLAVE_FIRMWARE_COMMAND)]:
+    for label, cmd in [
+        ("Master", adcam.GET_MASTER_FIRMWARE_COMMAND),
+        ("Slave", adcam.GET_SLAVE_FIRMWARE_COMMAND),
+    ]:
         v = adcam_inst.get_fw_version_burst_mode(cmd)
         if len(v) >= 4:
             print(f"{label} Firmware version = {v[0]}.{v[1]}.{v[2]}.{v[3]}")
@@ -280,9 +312,9 @@ def main():
             meta = section["content"][content_name]
             if "url" in meta:
                 print(f"Downloading {content_name} from {meta['url']} ...")
-                resp = requests.get(meta["url"],
-                                    headers={"Content-Type": "binary/octet-stream"},
-                                    timeout=120)
+                resp = requests.get(
+                    meta["url"], headers={"Content-Type": "binary/octet-stream"}, timeout=120
+                )
                 if resp.status_code != 200:
                     raise RuntimeError(f'Unable to fetch "{meta["url"]}"; HTTP {resp.status_code}')
                 data = resp.content
@@ -292,10 +324,14 @@ def main():
             else:
                 raise RuntimeError(f"No source for content '{content_name}' in manifest")
             if len(data) != meta["size"]:
-                raise RuntimeError(f"{content_name}: expected {meta['size']} bytes, got {len(data)}")
+                raise RuntimeError(
+                    f"{content_name}: expected {meta['size']} bytes, got {len(data)}"
+                )
             actual_md5 = hashlib.md5(data).hexdigest()
             if actual_md5.lower() != meta["md5"].lower():
-                raise RuntimeError(f"{content_name}: MD5 mismatch (expected {meta['md5']}, got {actual_md5})")
+                raise RuntimeError(
+                    f"{content_name}: MD5 mismatch (expected {meta['md5']}, got {actual_md5})"
+                )
             return data
 
         licenses = section.get("licenses")
@@ -337,8 +373,13 @@ def main():
     adcam_inst.get_imager_type_and_ccb_version()
 
     app = HoloscanPublisherApp(
-        cu_context, 0, hololink_channel,
-        args.ibv_name, args.ibv_port, adcam_inst, args.frame_limit,
+        cu_context,
+        0,
+        hololink_channel,
+        args.ibv_name,
+        args.ibv_port,
+        adcam_inst,
+        args.frame_limit,
     )
     app.run()
 

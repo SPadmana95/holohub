@@ -45,7 +45,6 @@ typedef struct {
 
   crc_output_t initial_crc;
   uint8_t crc_compute_flags;
-
 } crc_parameters_t;
 
 extern uint32_t const crc32_table[256];

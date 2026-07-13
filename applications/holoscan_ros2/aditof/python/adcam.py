@@ -13,16 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ctypes  # Added for FW Update as this needs structure format handling similar to C/C++
+
 # More details about the chip and eval kit can be found on https://www.analog.com/en/products/adtf3175.html
 import logging
 import math
 import struct
 import time
+from collections import namedtuple
 
 import hololink as hololink_module
-
-import ctypes  # Added for FW Update as this needs structure format handling similar to C/C++
-from collections import namedtuple
 
 ################### Firmware update related changes ###################################
 # Constants from Adsd3500.cpp for Firmware update
@@ -30,34 +30,34 @@ FLASH_PAGE_SIZE = 256
 WRITE_MASTER_FIRMWARE_COMMAND = 0x04
 WRITE_SLAVE_FIRMWARE_COMMAND = 0x2A
 GET_MASTER_FIRMWARE_COMMAND = 0x01
-GET_SLAVE_FIRMWARE_COMMAND  = 0x04
+GET_SLAVE_FIRMWARE_COMMAND = 0x04
 ADSD3500_CMD_GET_STATUS = 0x0020
 RESET_ADSD3500_CMD = 0x00240000
 GET_MASTER_CHIP_ID_CMD = 0x0112
-GET_SLAVE_CHIP_ID_CMD  = 0x0116
-SET_SWITCH_TO_BURST_MODE    = 0x0019
-STREAM_ON_CMD               = 0x00AD
-STREAM_ON_VAL               = 0x00C5
-STREAM_OFF_CMD              = 0x000C
-STREAM_OFF_VAL              = 0x0002
-ENABLE_VAL                  = 0x0001
-MIPI_CLK_CONTINUOUS_CMD     = 0x00A9
-MIPI_OUTPUT_SPEED_CMD       = 0x0031
-ADSD3500_CMD_GET_CHIP_INFO  = 0x0032
-DESKEW_ENABLE_CMD           = 0x00AB
-GET_IMAGER_ERROR_CMD        = 0x0038
+GET_SLAVE_CHIP_ID_CMD = 0x0116
+SET_SWITCH_TO_BURST_MODE = 0x0019
+STREAM_ON_CMD = 0x00AD
+STREAM_ON_VAL = 0x00C5
+STREAM_OFF_CMD = 0x000C
+STREAM_OFF_VAL = 0x0002
+ENABLE_VAL = 0x0001
+MIPI_CLK_CONTINUOUS_CMD = 0x00A9
+MIPI_OUTPUT_SPEED_CMD = 0x0031
+ADSD3500_CMD_GET_CHIP_INFO = 0x0032
+DESKEW_ENABLE_CMD = 0x00AB
+GET_IMAGER_ERROR_CMD = 0x0038
 GET_MIPI_CLK_CONTINUOUS_CMD = 0x00AA
-MIPI_SPEED_1_5_GBPS         = 0x0003
-MIPI_SPEED_1GBPS            = 0x0004
-LOW_BYTE_MASK               = 0x00FF
+MIPI_SPEED_1_5_GBPS = 0x0003
+MIPI_SPEED_1GBPS = 0x0004
+LOW_BYTE_MASK = 0x00FF
 GET_DUAL_ADSD3500_ENABLED_CMD = 0x005A
 ADI_STATUS_FIRMWARE_UPDATE = 0x000E
 ADI_STATUS_SECOND_FIRMWARE_FLASH_UPDATE = 0x0027
 ADI_ROM_CFG_CRC_SEED_VALUE = 0xFFFFFFFF
 ADI_ROM_CFG_CRC_POLYNOMIAL = 0x04C11DB7
-ADI_DUAL_FW_SLOT_SIZE = 0x20000   # 128 KB per slot
-ADI_CHUNK_HEADER_SIZE = 20        # ADI chunk header size in bytes
-FW_MIN_VERSION = (8, 1, 0, 0)     # Minimum supported firmware version
+ADI_DUAL_FW_SLOT_SIZE = 0x20000  # 128 KB per slot
+ADI_CHUNK_HEADER_SIZE = 20  # ADI chunk header size in bytes
+FW_MIN_VERSION = (8, 1, 0, 0)  # Minimum supported firmware version
 
 # ---------------------------------------------------------------------------
 # Imager type codes returned by register 0x0032 (ADSD3500_CMD_GET_CHIP_INFO)
@@ -68,121 +68,322 @@ ADCAM_IMAGER_TYPE_ADTF3066 = 2
 
 # Converted from uint32_t const crc32_table[256]. Needed for Firmware update
 crc32_table = (
-    0, 79764919, 159529838, 222504665, 319059676,
-    398814059, 445009330, 507990021, 638119352,
-    583659535, 797628118, 726387553, 890018660,
-    835552979, 1015980042, 944750013, 1276238704,
-    1221641927, 1167319070, 1095957929, 1595256236,
-    1540665371, 1452775106, 1381403509, 1780037320,
-    1859660671, 1671105958, 1733955601, 2031960084,
-    2111593891, 1889500026, 1952343757, 2552477408,
-    2632100695, 2443283854, 2506133561, 2334638140,
-    2414271883, 2191915858, 2254759653, 3190512472,
-    3135915759, 3081330742, 3009969537, 2905550212,
-    2850959411, 2762807018, 2691435357, 3560074640,
-    3505614887, 3719321342, 3648080713, 3342211916,
-    3287746299, 3467911202, 3396681109, 4063920168,
-    4143685023, 4223187782, 4286162673, 3779000052,
-    3858754371, 3904687514, 3967668269, 881225847,
-    809987520, 1023691545, 969234094, 662832811,
-    591600412, 771767749, 717299826, 311336399,
-    374308984, 453813921, 533576470, 25881363,
-    88864420, 134795389, 214552010, 2023205639,
-    2086057648, 1897238633, 1976864222, 1804852699,
-    1867694188, 1645340341, 1724971778, 1587496639,
-    1516133128, 1461550545, 1406951526, 1302016099,
-    1230646740, 1142491917, 1087903418, 2896545431,
-    2825181984, 2770861561, 2716262478, 3215044683,
-    3143675388, 3055782693, 3001194130, 2326604591,
-    2389456536, 2200899649, 2280525302, 2578013683,
-    2640855108, 2418763421, 2498394922, 3769900519,
-    3832873040, 3912640137, 3992402750, 4088425275,
-    4151408268, 4197601365, 4277358050, 3334271071,
-    3263032808, 3476998961, 3422541446, 3585640067,
-    3514407732, 3694837229, 3640369242, 1762451694,
-    1842216281, 1619975040, 1682949687, 2047383090,
-    2127137669, 1938468188, 2001449195, 1325665622,
-    1271206113, 1183200824, 1111960463, 1543535498,
-    1489069629, 1434599652, 1363369299, 622672798,
-    568075817, 748617968, 677256519, 907627842,
-    853037301, 1067152940, 995781531, 51762726,
-    131386257, 177728840, 240578815, 269590778,
-    349224269, 429104020, 491947555, 4046411278,
-    4126034873, 4172115296, 4234965207, 3794477266,
-    3874110821, 3953728444, 4016571915, 3609705398,
-    3555108353, 3735388376, 3664026991, 3290680682,
-    3236090077, 3449943556, 3378572211, 3174993278,
-    3120533705, 3032266256, 2961025959, 2923101090,
-    2868635157, 2813903052, 2742672763, 2604032198,
-    2683796849, 2461293480, 2524268063, 2284983834,
-    2364738477, 2175806836, 2238787779, 1569362073,
-    1498123566, 1409854455, 1355396672, 1317987909,
-    1246755826, 1192025387, 1137557660, 2072149281,
-    2135122070, 1912620623, 1992383480, 1753615357,
-    1816598090, 1627664531, 1707420964, 295390185,
-    358241886, 404320391, 483945776, 43990325,
-    106832002, 186451547, 266083308, 932423249,
-    861060070, 1041341759, 986742920, 613929101,
-    542559546, 756411363, 701822548, 3316196985,
-    3244833742, 3425377559, 3370778784, 3601682597,
-    3530312978, 3744426955, 3689838204, 3819031489,
-    3881883254, 3928223919, 4007849240, 4037393693,
-    4100235434, 4180117107, 4259748804, 2310601993,
-    2373574846, 2151335527, 2231098320, 2596047829,
-    2659030626, 2470359227, 2550115596, 2947551409,
-    2876312838, 2788305887, 2733848168, 3165939309,
-    3094707162, 3040238851, 2985771188
+    0,
+    79764919,
+    159529838,
+    222504665,
+    319059676,
+    398814059,
+    445009330,
+    507990021,
+    638119352,
+    583659535,
+    797628118,
+    726387553,
+    890018660,
+    835552979,
+    1015980042,
+    944750013,
+    1276238704,
+    1221641927,
+    1167319070,
+    1095957929,
+    1595256236,
+    1540665371,
+    1452775106,
+    1381403509,
+    1780037320,
+    1859660671,
+    1671105958,
+    1733955601,
+    2031960084,
+    2111593891,
+    1889500026,
+    1952343757,
+    2552477408,
+    2632100695,
+    2443283854,
+    2506133561,
+    2334638140,
+    2414271883,
+    2191915858,
+    2254759653,
+    3190512472,
+    3135915759,
+    3081330742,
+    3009969537,
+    2905550212,
+    2850959411,
+    2762807018,
+    2691435357,
+    3560074640,
+    3505614887,
+    3719321342,
+    3648080713,
+    3342211916,
+    3287746299,
+    3467911202,
+    3396681109,
+    4063920168,
+    4143685023,
+    4223187782,
+    4286162673,
+    3779000052,
+    3858754371,
+    3904687514,
+    3967668269,
+    881225847,
+    809987520,
+    1023691545,
+    969234094,
+    662832811,
+    591600412,
+    771767749,
+    717299826,
+    311336399,
+    374308984,
+    453813921,
+    533576470,
+    25881363,
+    88864420,
+    134795389,
+    214552010,
+    2023205639,
+    2086057648,
+    1897238633,
+    1976864222,
+    1804852699,
+    1867694188,
+    1645340341,
+    1724971778,
+    1587496639,
+    1516133128,
+    1461550545,
+    1406951526,
+    1302016099,
+    1230646740,
+    1142491917,
+    1087903418,
+    2896545431,
+    2825181984,
+    2770861561,
+    2716262478,
+    3215044683,
+    3143675388,
+    3055782693,
+    3001194130,
+    2326604591,
+    2389456536,
+    2200899649,
+    2280525302,
+    2578013683,
+    2640855108,
+    2418763421,
+    2498394922,
+    3769900519,
+    3832873040,
+    3912640137,
+    3992402750,
+    4088425275,
+    4151408268,
+    4197601365,
+    4277358050,
+    3334271071,
+    3263032808,
+    3476998961,
+    3422541446,
+    3585640067,
+    3514407732,
+    3694837229,
+    3640369242,
+    1762451694,
+    1842216281,
+    1619975040,
+    1682949687,
+    2047383090,
+    2127137669,
+    1938468188,
+    2001449195,
+    1325665622,
+    1271206113,
+    1183200824,
+    1111960463,
+    1543535498,
+    1489069629,
+    1434599652,
+    1363369299,
+    622672798,
+    568075817,
+    748617968,
+    677256519,
+    907627842,
+    853037301,
+    1067152940,
+    995781531,
+    51762726,
+    131386257,
+    177728840,
+    240578815,
+    269590778,
+    349224269,
+    429104020,
+    491947555,
+    4046411278,
+    4126034873,
+    4172115296,
+    4234965207,
+    3794477266,
+    3874110821,
+    3953728444,
+    4016571915,
+    3609705398,
+    3555108353,
+    3735388376,
+    3664026991,
+    3290680682,
+    3236090077,
+    3449943556,
+    3378572211,
+    3174993278,
+    3120533705,
+    3032266256,
+    2961025959,
+    2923101090,
+    2868635157,
+    2813903052,
+    2742672763,
+    2604032198,
+    2683796849,
+    2461293480,
+    2524268063,
+    2284983834,
+    2364738477,
+    2175806836,
+    2238787779,
+    1569362073,
+    1498123566,
+    1409854455,
+    1355396672,
+    1317987909,
+    1246755826,
+    1192025387,
+    1137557660,
+    2072149281,
+    2135122070,
+    1912620623,
+    1992383480,
+    1753615357,
+    1816598090,
+    1627664531,
+    1707420964,
+    295390185,
+    358241886,
+    404320391,
+    483945776,
+    43990325,
+    106832002,
+    186451547,
+    266083308,
+    932423249,
+    861060070,
+    1041341759,
+    986742920,
+    613929101,
+    542559546,
+    756411363,
+    701822548,
+    3316196985,
+    3244833742,
+    3425377559,
+    3370778784,
+    3601682597,
+    3530312978,
+    3744426955,
+    3689838204,
+    3819031489,
+    3881883254,
+    3928223919,
+    4007849240,
+    4037393693,
+    4100235434,
+    4180117107,
+    4259748804,
+    2310601993,
+    2373574846,
+    2151335527,
+    2231098320,
+    2596047829,
+    2659030626,
+    2470359227,
+    2550115596,
+    2947551409,
+    2876312838,
+    2788305887,
+    2733848168,
+    3165939309,
+    3094707162,
+    3040238851,
+    2985771188,
 )
+
 
 # 1. Define the Packed Struct
 # The __attribute__((__packed__)) in C++ is handled by '_pack_ = 1'
-#class CmdHeaderStruct(ctypes.LittleEndianStructure):
+# class CmdHeaderStruct(ctypes.LittleEndianStructure):
 class CmdHeaderStruct(ctypes.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
-        ("id8", ctypes.c_uint8),             # 0xAD
-        ("chunk_size16", ctypes.c_uint16),    # 256 is flash page size
-        ("cmd8", ctypes.c_uint8),             # CMD for fw upgrade
-        ("total_size_fw32", ctypes.c_uint32), # total size of firmware
-        ("header_checksum32", ctypes.c_uint32),# header checksum
-        ("crc_of_fw32", ctypes.c_uint32),     # CRC of the Firmware Binary
+        ("id8", ctypes.c_uint8),  # 0xAD
+        ("chunk_size16", ctypes.c_uint16),  # 256 is flash page size
+        ("cmd8", ctypes.c_uint8),  # CMD for fw upgrade
+        ("total_size_fw32", ctypes.c_uint32),  # total size of firmware
+        ("header_checksum32", ctypes.c_uint32),  # header checksum
+        ("crc_of_fw32", ctypes.c_uint32),  # CRC of the Firmware Binary
     ]
+
 
 # 2. Define the Union
 class CmdHeaderUnion(ctypes.Union):
     _fields_ = [
-        ("cmd_header_byte", ctypes.c_uint8 * 16), # 16 byte array
-        ("fields", CmdHeaderStruct)               # The struct defined above
+        ("cmd_header_byte", ctypes.c_uint8 * 16),  # 16 byte array
+        ("fields", CmdHeaderStruct),  # The struct defined above
     ]
 
+
 # From compute_crc.h
-IS_CRC_MIRROR = (1 << 0) #
-class CRC_TYPE: #
+IS_CRC_MIRROR = 1 << 0  #
+
+
+class CRC_TYPE:  #
     CRC_8bit = 8
     CRC_16bit = 16
     CRC_32bit = 32
 
-class CrcOutputUnion(ctypes.Union): #
+
+class CrcOutputUnion(ctypes.Union):  #
     _fields_ = [
         ("crc_8bit", ctypes.c_uint8),
         ("crc_16bit", ctypes.c_uint16),
         ("crc_32bit", ctypes.c_uint32),
     ]
 
-class CrcParametersUnion (ctypes.Structure): #
+
+class CrcParametersUnion(ctypes.Structure):  #
     _fields_ = [
-        ("type", ctypes.c_int),             # CRC_TYPE enum
-        ("polynomial", CrcOutputUnion),      # Nested Union
-        ("initial_crc", CrcOutputUnion),     # Nested Union
-        ("crc_compute_flags", ctypes.c_uint32)
+        ("type", ctypes.c_int),  # CRC_TYPE enum
+        ("polynomial", CrcOutputUnion),  # Nested Union
+        ("initial_crc", CrcOutputUnion),  # Nested Union
+        ("crc_compute_flags", ctypes.c_uint32),
     ]
 
-#This is the structure for FW data chunk of 256 bytes
+
+# This is the structure for FW data chunk of 256 bytes
 class FwUpdateBinData(ctypes.BigEndianStructure):
     _pack_ = 1
     _fields_ = [
-        ("raw_data", ctypes.c_uint8 * 256),             #256 bytes of FW data chunk
+        ("raw_data", ctypes.c_uint8 * 256),  # 256 bytes of FW data chunk
     ]
+
 
 def generate_mirror(value):
     """
@@ -192,8 +393,9 @@ def generate_mirror(value):
     mirror_value = 0
     for i in range(8):
         if (value >> i) & 1:
-            mirror_value |= (1 << (7 - i))
+            mirror_value |= 1 << (7 - i)
     return mirror_value
+
 
 def compute_crc_python(crc_parameters, data):
     """
@@ -217,6 +419,8 @@ def compute_crc_python(crc_parameters, data):
                 # We MUST mask with 0xFFFFFFFF to keep it 32-bit
                 temp_value_crc32 = (crc32_table[index] ^ (temp_value_crc32 << 8)) & 0xFFFFFFFF
     return temp_value_crc32
+
+
 ################### Till here : Firmware update related changes ###################################
 
 # ---------------------------------------------------------------------------
@@ -225,11 +429,22 @@ def compute_crc_python(crc_parameters, data):
 #   Fields: mode_number, mipi_w, mipi_h, px_w, px_h,
 #           phase_depth_bits, ab_bits, confidence_bits,
 #           ab_averaging, depth_enable, output_mipi
-AdcamModeConfig = namedtuple('AdcamModeConfig', [
-    'mode_number', 'width', 'height', 'pixel_width', 'pixel_height',
-    'phase_depth_bits', 'ab_bits', 'confidence_bits',
-    'ab_averaging', 'depth_enable', 'output_mipi',
-])
+AdcamModeConfig = namedtuple(
+    "AdcamModeConfig",
+    [
+        "mode_number",
+        "width",
+        "height",
+        "pixel_width",
+        "pixel_height",
+        "phase_depth_bits",
+        "ab_bits",
+        "confidence_bits",
+        "ab_averaging",
+        "depth_enable",
+        "output_mipi",
+    ],
+)
 
 # ADSD3100: MP (1024×1024, 2 Gbps) and QMP (512×512, 1 Gbps)
 ADSD3100_STANDARD_MODES = [
@@ -237,22 +452,22 @@ ADSD3100_STANDARD_MODES = [
     AdcamModeConfig(0, 3072, 1707, 1024, 1024, 6, 6, 2, 0, 1, 2),
     AdcamModeConfig(1, 3072, 1707, 1024, 1024, 6, 6, 2, 0, 1, 2),
     # ---- QMP modes (512×512, 1 Gbps MIPI) ----
-    AdcamModeConfig(2, 2560,  512,  512,  512, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(3, 2560,  512,  512,  512, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(5, 2560,  512,  512,  512, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(6, 2560,  512,  512,  512, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(2, 2560, 512, 512, 512, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(3, 2560, 512, 512, 512, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(5, 2560, 512, 512, 512, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(6, 2560, 512, 512, 512, 6, 6, 2, 1, 1, 2),
 ]
 
 # ADTF3066: VGA (512×640, 1 Gbps) and QVGA (256×320, 1 Gbps)
 ADTF3066_STANDARD_MODES = [
     # ---- VGA modes (512×640, 1 Gbps MIPI) → modes 0,1,7 ----
-    AdcamModeConfig(0, 2560,  640,  512,  640, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(1, 2560,  640,  512,  640, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(7, 2560,  640,  512,  640, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(0, 2560, 640, 512, 640, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(1, 2560, 640, 512, 640, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(7, 2560, 640, 512, 640, 6, 6, 2, 1, 1, 2),
     # ---- QVGA modes (256×320, 1 Gbps MIPI) → modes 3,6,8 ----
-    AdcamModeConfig(3, 1280,  320,  256,  320, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(6, 1280,  320,  256,  320, 6, 6, 2, 1, 1, 2),
-    AdcamModeConfig(8, 1280,  320,  256,  320, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(3, 1280, 320, 256, 320, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(6, 1280, 320, 256, 320, 6, 6, 2, 1, 1, 2),
+    AdcamModeConfig(8, 1280, 320, 256, 320, 6, 6, 2, 1, 1, 2),
 ]
 
 
@@ -277,14 +492,14 @@ def adcam_make_mode_settings(cfg):
       Bits [11:10]: confidence_bits
       Bits [13:12]: output_mipi
     """
-    w  = (cfg.depth_enable           & 0x1) << 0
-    w |= 1                                  << 1   # data_interleaving
-    w |= 1                                  << 2   # ab_enable
-    w |= (cfg.ab_averaging           & 0x1) << 3
+    w = (cfg.depth_enable & 0x1) << 0
+    w |= 1 << 1  # data_interleaving
+    w |= 1 << 2  # ab_enable
+    w |= (cfg.ab_averaging & 0x1) << 3
     w |= ((6 - cfg.phase_depth_bits) & 0x7) << 4
-    w |= ((6 - cfg.ab_bits)          & 0x7) << 7
-    w |= (cfg.confidence_bits        & 0x3) << 10
-    w |= (cfg.output_mipi            & 0x3) << 12
+    w |= ((6 - cfg.ab_bits) & 0x7) << 7
+    w |= (cfg.confidence_bits & 0x3) << 10
+    w |= (cfg.output_mipi & 0x3) << 12
     return w & 0xFFFF
 
 
@@ -299,8 +514,7 @@ class ADCAMEXPANDER:
 
     def set_register(self, register, value, timeout=None):
         logging.debug(
-            "set_register(register=%d(0x%X), value=%d(0x%X))"
-            % (register, register, value, value)
+            "set_register(register=%d(0x%X), value=%d(0x%X))" % (register, register, value, value)
         )
         write_bytes = bytearray(100)
         serializer = hololink_module.Serializer(write_bytes)
@@ -377,7 +591,7 @@ class adcam:
         self._hololink = hololink_channel.hololink()
         self._i2c = self._hololink.get_i2c(hololink_i2c_controller_address)
         self._adcam_mode = adcam_mode
-        self._reset_pin  = reset_pin
+        self._reset_pin = reset_pin
         self._imager_type = 0  # set by get_imager_type_and_ccb_version() after start()
         self._pixel_format = hololink_module.sensors.csi.PixelFormat.RAW_8
 
@@ -389,9 +603,9 @@ class adcam:
             init_cfg = adcam_find_mode(ADTF3066_STANDARD_MODES, adcam_mode)
         if init_cfg is None:
             raise RuntimeError(f"adcam: unsupported adcam_mode {adcam_mode}")
-        self._width        = init_cfg.width
-        self._height       = init_cfg.height
-        self._pixel_width  = init_cfg.pixel_width
+        self._width = init_cfg.width
+        self._height = init_cfg.height
+        self._pixel_width = init_cfg.pixel_width
         self._pixel_height = init_cfg.pixel_height
 
         self._expander0 = ADCAMEXPANDER(
@@ -404,9 +618,7 @@ class adcam:
             hololink_module.CAM_I2C_BUS,
             self.EXPANDER_1_I2C_BUS_ADDRESS,
         )
-        self._pf_gpio = polarfireGpio(
-            hololink_channel, self._hololink.get_gpio(channel_metadata)
-        )
+        self._pf_gpio = polarfireGpio(hololink_channel, self._hololink.get_gpio(channel_metadata))
 
     def get_version(self):
         logging.debug("Fatching Chip version")
@@ -475,8 +687,10 @@ class adcam:
         Word 2 (0xYYYY): built from AdcamModeConfig via adcam_make_mode_settings()
         Mirrors Adcam::set_mode() in adcam_lib.cpp.
         """
-        imager_str = {ADCAM_IMAGER_TYPE_ADSD3100: "ADSD3100",
-                      ADCAM_IMAGER_TYPE_ADTF3066: "ADTF3066"}.get(self._imager_type, "Unknown")
+        imager_str = {
+            ADCAM_IMAGER_TYPE_ADSD3100: "ADSD3100",
+            ADCAM_IMAGER_TYPE_ADTF3066: "ADTF3066",
+        }.get(self._imager_type, "Unknown")
 
         if self._imager_type == ADCAM_IMAGER_TYPE_ADSD3100:
             cfg = adcam_find_mode(ADSD3100_STANDARD_MODES, self._adcam_mode)
@@ -498,7 +712,7 @@ class adcam:
                 f"{imager_str} (raw={self._imager_type})"
             )
 
-        mode_reg     = 0xDA00 | (self._adcam_mode & 0xFF)
+        mode_reg = 0xDA00 | (self._adcam_mode & 0xFF)
         mode_setting = adcam_make_mode_settings(cfg)
         REGISTER = (mode_reg << 16) | mode_setting
         logging.info(
@@ -507,29 +721,29 @@ class adcam:
         )
         self.set_register16_no_response(REGISTER)
 
-    def set_mode_for_slave (self):
+    def set_mode_for_slave(self):
         logging.debug("Setting mode for Slave pulsatrix")
-        print ("Setting mode for Slave pulsatrix")
-        REGISTER = 0xDA01280F #Set mode to 0x01
+        print("Setting mode for Slave pulsatrix")
+        REGISTER = 0xDA01280F  # Set mode to 0x01
         self.set_register16_no_response(REGISTER)
 
-    def set_slave_threshold (self, RadialValue):
-        REGISTER = 0x0027 #Slave Radial value write register
+    def set_slave_threshold(self, RadialValue):
+        REGISTER = 0x0027  # Slave Radial value write register
         REGISTER = REGISTER << 16 | RadialValue
         logging.debug(f"Setting radial threshold for Slave pulsatrix to 0x{REGISTER:X}")
-        print (f"Setting radial threshold for Slave pulsatrix to 0x{REGISTER:X}")
+        print(f"Setting radial threshold for Slave pulsatrix to 0x{REGISTER:X}")
         self.set_register16_no_response(REGISTER)
 
-    def get_slave_threshold (self):
+    def get_slave_threshold(self):
         logging.debug("Getting radial threshold for Slave pulsatrix")
-        print ("Getting radial threshold for Slave pulsatrix")
-        REGISTER = 0x0028 #Slave Radial value read register
+        print("Getting radial threshold for Slave pulsatrix")
+        REGISTER = 0x0028  # Slave Radial value read register
         resp = self.set_register16_response(REGISTER, 2)
         logging.debug(f"Response = {resp}")
-        print (f"Slave reResponse = {resp}")
+        print(f"Slave reResponse = {resp}")
         return resp
 
-    def softreset (self):
+    def softreset(self):
         print("Softresetting the chip")
         logging.info("Softresetting the chip")
         REGISTER = RESET_ADSD3500_CMD
@@ -585,25 +799,13 @@ class adcam:
         self.set_register16_no_response(REGISTER)
         return True
 
-    def force_stop_burst_mode(self):
-        logging.debug("Forcing burst mode off")
-        self.switch_from_burst_to_standard()
-        return self.get_status()
-        # Get chip ID of 2nd Pulsatrix which is on the slave side
-        REGISTER = GET_SLAVE_CHIP_ID_CMD
-        print ("Getting Slave Pulsatrix Chip ID")
-        resp = self.set_register16_response(REGISTER, 2)
-        logging.info(f"Fun: Slave Pulsatrix Chip ID = {resp}")
-        print (f"Fun: Slave Pulsatrix Chip ID = {resp}")
-        return resp
-
-    def get_generic_resp (self):
+    def get_generic_resp(self):
         # Get chip ID of 2nd Pulsatrix which is on the slave side
         REGISTER = 0x005A
-        print ("Getting generic respons")
+        print("Getting generic response")
         resp = self.set_register16_response(REGISTER, 2)
         logging.info(f"Fun: Generic Response = {resp}")
-        print (f"Fun: Generic Response  = {resp}")
+        print(f"Fun: Generic Response  = {resp}")
         return resp
 
     def get_only_status(self):
@@ -611,7 +813,7 @@ class adcam:
         # Get chip ID
         REGISTER = ADSD3500_CMD_GET_STATUS
         resp = self.set_register16_response(REGISTER, 2)
-        print (f"Chip Status = {resp}")
+        print(f"Chip Status = {resp}")
         logging.info(f"Chip Status = {resp}")
         return resp
 
@@ -634,10 +836,13 @@ class adcam:
         imager_type = resp[0] & LOW_BYTE_MASK
         ccb_version = resp[1] & LOW_BYTE_MASK
 
-        ccb_str = {1: "Version 0", 2: "Version 1",
-                   3: "Version 2", 4: "Version 3"}.get(ccb_version, "Unknown")
-        imager_str = {ADCAM_IMAGER_TYPE_ADSD3100: "ADSD3100",
-                      ADCAM_IMAGER_TYPE_ADTF3066: "ADTF3066"}.get(imager_type, "Unknown")
+        ccb_str = {1: "Version 0", 2: "Version 1", 3: "Version 2", 4: "Version 3"}.get(
+            ccb_version, "Unknown"
+        )
+        imager_str = {
+            ADCAM_IMAGER_TYPE_ADSD3100: "ADSD3100",
+            ADCAM_IMAGER_TYPE_ADTF3066: "ADTF3066",
+        }.get(imager_type, "Unknown")
 
         logging.info(
             f"Imager Type: {imager_str} (raw={imager_type}), "
@@ -668,9 +873,9 @@ class adcam:
             )
             return
 
-        self._width        = mode_cfg.width
-        self._height       = mode_cfg.height
-        self._pixel_width  = mode_cfg.pixel_width
+        self._width = mode_cfg.width
+        self._height = mode_cfg.height
+        self._pixel_width = mode_cfg.pixel_width
         self._pixel_height = mode_cfg.pixel_height
 
         logging.info(
@@ -747,8 +952,7 @@ class adcam:
 
     def set_register(self, register, value, timeout=None):
         logging.debug(
-            "set_register(register=%d(0x%X), value=%d(0x%X))"
-            % (register, register, value, value)
+            "set_register(register=%d(0x%X), value=%d(0x%X))" % (register, register, value, value)
         )
         write_bytes = bytearray(100)
         serializer = hololink_module.Serializer(write_bytes)
@@ -837,30 +1041,26 @@ class adcam:
             print("ADCAM exception Error:", hex(register))
             return None
 
-    #Conceptually this funciton is same as def set_register16_no_response(self, register, resp_len=0, timeout=None):
-    def write_raw_data (self, data_chunk, data_len, timeout=None):
+    # Conceptually this function is same as def set_register16_no_response(self, register, resp_len=0, timeout=None):
+    def write_raw_data(self, data_chunk, data_len, timeout=None):
         try:
             write_bytes = bytearray(1000)
             uint16_array = self.bytes_to_uint16_array(data_chunk)
             serializer = hololink_module.Serializer(write_bytes)
-            #print (f"Debug: With response write_raw_data : Len =  {len(uint16_array)}")
+            # print (f"Debug: With response write_raw_data : Len =  {len(uint16_array)}")
             for i in range(0, len(uint16_array), 1):
                 chunk = uint16_array[i]
                 # The inner function handles the format string correctly for each chunk
                 serializer.append_uint16_be(chunk)
             read_byte_count = 0
-            #print(f"write_raw_data: Serializer data (hex): {[f'0x{b:02x}' for b in serializer.data()]}")
+            # print(f"write_raw_data: Serializer data (hex): {[f'0x{b:02x}' for b in serializer.data()]}")
             # Print data in 16 bytes per line for easier debugging
-            data = serializer.data()
-            #print("write_raw_data: Serializer data (hex):")
-            #for i in range(0, len(data), 16):
-            #    line = ' '.join(f'0x{b:02x}' for b in data[i:i+16])
+            # print("write_raw_data: Serializer data (hex):")
+            # for i in range(0, len(serializer.data()), 16):
+            #    line = ' '.join(f'0x{b:02x}' for b in serializer.data()[i:i+16])
             #    print(f"  [{i:04d}]: {line}")
             self._i2c.i2c_transaction(
-                self.ADCAM_I2C_BUS_ADDRESS,
-                serializer.data(),
-                read_byte_count,
-                timeout=timeout
+                self.ADCAM_I2C_BUS_ADDRESS, serializer.data(), read_byte_count, timeout=timeout
             )
             return True
         except AttributeError as e:
@@ -876,15 +1076,12 @@ class adcam:
             logging.info(f"[ERROR] Unexpected failure during I2C transaction: {e}")
             return None
 
-    def read_raw_data (self, data_chunk, read_len, timeout=None):
+    def read_raw_data(self, data_chunk, read_len, timeout=None):
         try:
-            write_dummy_bytes = b'' #This is plain read. So write data is null.
+            write_dummy_bytes = b""  # This is plain read. So write data is null.
             read_byte_count = read_len
             reply = self._i2c.i2c_transaction(
-                self.ADCAM_I2C_BUS_ADDRESS,
-                write_dummy_bytes,
-                read_byte_count,
-                timeout=timeout
+                self.ADCAM_I2C_BUS_ADDRESS, write_dummy_bytes, read_byte_count, timeout=timeout
             )
             deserializer = hololink_module.Deserializer(reply)
             deserializer.next_uint8()
@@ -972,7 +1169,7 @@ class adcam:
         """Detected imager type: ADCAM_IMAGER_TYPE_ADSD3100=1, ADCAM_IMAGER_TYPE_ADTF3066=2."""
         return self._imager_type
 
-    #def adcam_reset_power_on(self, hololink, hololink_channel, channel_metadata):
+    # def adcam_reset_power_on(self, hololink, hololink_channel, channel_metadata):
     def adcam_reset_power_on(self):
         logging.debug("Resetting ADCAM")
         self._pf_gpio.pull_reset_low(0)
@@ -1030,7 +1227,7 @@ class adcam:
         logging.info("booting up ADSD, wait for 5 seconds")
         time.sleep(5)  # Boot-up ADSD3500
 
-    #def adcam_Only_reset(self, hololink, hololink_channel, channel_metadata):
+    # def adcam_Only_reset(self, hololink, hololink_channel, channel_metadata):
     def adcam_Only_reset(self):
         # pf_gpio = polargpio.polarfireGpio(hololink_channel, hololink.get_gpio(channel_metadata) )
         logging.debug("ADCAM - Making Reset LOW ONLY")
@@ -1046,9 +1243,7 @@ class adcam:
     def configure_converter(self, converter):
         # where do we find the first received byte?
         start_byte = converter.receiver_start_byte()
-        transmitted_line_bytes = converter.transmitted_line_bytes(
-            self._pixel_format, self._width
-        )
+        transmitted_line_bytes = converter.transmitted_line_bytes(self._pixel_format, self._width)
         received_line_bytes = converter.received_line_bytes(transmitted_line_bytes)
         converter.configure(
             start_byte,
@@ -1107,11 +1302,14 @@ class adcam:
 
         # --- Validate Slot 0 (master) ---
         if file_data[0] != 0xAD or file_data[1] != 0x54:
-            print(f"Invalid Slot 0 header (expected 0xAD 0x54, "
-                  f"got 0x{file_data[0]:02X} 0x{file_data[1]:02X})")
+            print(
+                f"Invalid Slot 0 header (expected 0xAD 0x54, "
+                f"got 0x{file_data[0]:02X} 0x{file_data[1]:02X})"
+            )
             return False
-        master_len = (file_data[8] | (file_data[9] << 8) |
-                      (file_data[10] << 16) | (file_data[11] << 24))
+        master_len = (
+            file_data[8] | (file_data[9] << 8) | (file_data[10] << 16) | (file_data[11] << 24)
+        )
         if master_len == 0 or master_len > ADI_DUAL_FW_SLOT_SIZE - ADI_CHUNK_HEADER_SIZE:
             print(f"Invalid master firmware size: {master_len} bytes")
             return False
@@ -1119,20 +1317,26 @@ class adcam:
         # --- Validate Slot 1 (slave) ---
         s1 = ADI_DUAL_FW_SLOT_SIZE
         if file_data[s1] != 0xAD or file_data[s1 + 1] != 0x60:
-            print(f"Invalid Slot 1 header (expected 0xAD 0x60, "
-                  f"got 0x{file_data[s1]:02X} 0x{file_data[s1+1]:02X})")
+            print(
+                f"Invalid Slot 1 header (expected 0xAD 0x60, "
+                f"got 0x{file_data[s1]:02X} 0x{file_data[s1+1]:02X})"
+            )
             return False
-        slave_len = (file_data[s1+8] | (file_data[s1+9] << 8) |
-                     (file_data[s1+10] << 16) | (file_data[s1+11] << 24))
+        slave_len = (
+            file_data[s1 + 8]
+            | (file_data[s1 + 9] << 8)
+            | (file_data[s1 + 10] << 16)
+            | (file_data[s1 + 11] << 24)
+        )
         if slave_len == 0 or slave_len > ADI_DUAL_FW_SLOT_SIZE - ADI_CHUNK_HEADER_SIZE:
             print(f"Invalid slave firmware size: {slave_len} bytes")
             return False
 
         # --- Extract payloads ---
-        master_fw = bytes(file_data[ADI_CHUNK_HEADER_SIZE:
-                                    ADI_CHUNK_HEADER_SIZE + master_len])
-        slave_fw  = bytes(file_data[s1 + ADI_CHUNK_HEADER_SIZE:
-                                    s1 + ADI_CHUNK_HEADER_SIZE + slave_len])
+        master_fw = bytes(file_data[ADI_CHUNK_HEADER_SIZE : ADI_CHUNK_HEADER_SIZE + master_len])
+        slave_fw = bytes(
+            file_data[s1 + ADI_CHUNK_HEADER_SIZE : s1 + ADI_CHUNK_HEADER_SIZE + slave_len]
+        )
 
         if all(b == 0 for b in master_fw):
             print("[ERR] Slot 0 master firmware payload is all zeros. Aborting.")
@@ -1143,11 +1347,19 @@ class adcam:
 
         # --- Extract CRC trailers (little-endian uint32 after each payload) ---
         off_m = ADI_CHUNK_HEADER_SIZE + master_len
-        master_expected_crc = (file_data[off_m]       | (file_data[off_m+1] << 8) |
-                                (file_data[off_m+2] << 16) | (file_data[off_m+3] << 24))
+        master_expected_crc = (
+            file_data[off_m]
+            | (file_data[off_m + 1] << 8)
+            | (file_data[off_m + 2] << 16)
+            | (file_data[off_m + 3] << 24)
+        )
         off_s = s1 + ADI_CHUNK_HEADER_SIZE + slave_len
-        slave_expected_crc  = (file_data[off_s]       | (file_data[off_s+1] << 8) |
-                                (file_data[off_s+2] << 16) | (file_data[off_s+3] << 24))
+        slave_expected_crc = (
+            file_data[off_s]
+            | (file_data[off_s + 1] << 8)
+            | (file_data[off_s + 2] << 16)
+            | (file_data[off_s + 3] << 24)
+        )
         print(f"[INFO] Header Master CRC : 0x{master_expected_crc:08X}")
         print(f"[INFO] Header Slave CRC  : 0x{slave_expected_crc:08X}")
 
@@ -1156,7 +1368,7 @@ class adcam:
             print("Firmware payload too small to contain a version number")
             return False
         master_ver = f"{master_fw[0]}.{master_fw[1]}.{master_fw[2]}.{master_fw[3]}"
-        slave_ver  = f"{slave_fw[0]}.{slave_fw[1]}.{slave_fw[2]}.{slave_fw[3]}"
+        slave_ver = f"{slave_fw[0]}.{slave_fw[1]}.{slave_fw[2]}.{slave_fw[3]}"
         print(f"[INFO] Master firmware version : {master_ver}")
         print(f"[INFO] Slave  firmware version : {slave_ver}")
         if master_fw[:4] != slave_fw[:4]:
@@ -1195,18 +1407,21 @@ class adcam:
         # --- Execute update(s) ---
         if slave_found:
             print("\nBoth ADSD3500 devices detected. Updating master and slave firmware.")
-            if not self._update_adsd3500_master_firmware(master_fw, master_len, force,
-                                                          master_expected_crc):
+            if not self._update_adsd3500_master_firmware(
+                master_fw, master_len, force, master_expected_crc
+            ):
                 print("Master firmware update failed.")
                 return False
-            if not self._update_adsd3500_slave_firmware(slave_fw, slave_len, force,
-                                                         slave_expected_crc):
+            if not self._update_adsd3500_slave_firmware(
+                slave_fw, slave_len, force, slave_expected_crc
+            ):
                 print("Slave firmware update failed.")
                 return False
         else:
             print("\nSingle ADSD3500 device detected. Updating master firmware only.")
-            if not self._update_adsd3500_master_firmware(master_fw, master_len, force,
-                                                          master_expected_crc):
+            if not self._update_adsd3500_master_firmware(
+                master_fw, master_len, force, master_expected_crc
+            ):
                 print("Master firmware update failed.")
                 return False
 
@@ -1234,8 +1449,10 @@ class adcam:
         # Minimum version check: must be >= FW_MIN_VERSION
         if new_ver < FW_MIN_VERSION:
             min_str = ".".join(str(v) for v in FW_MIN_VERSION)
-            print(f"[{label}] ERROR: Firmware version {new_str} is below "
-                  f"the minimum required version {min_str}. Aborting.")
+            print(
+                f"[{label}] ERROR: Firmware version {new_str} is below "
+                f"the minimum required version {min_str}. Aborting."
+            )
             return False
 
         # Downgrade check
@@ -1262,12 +1479,16 @@ class adcam:
         print("[MASTER] Before upgrading new firmware")
         current_ver = self.get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND)
         if current_ver is None or len(current_ver) < 44:
-            print(f"[MASTER] Failed to read current firmware version (got "
-                  f"{0 if current_ver is None else len(current_ver)} bytes, expected 44)")
+            print(
+                f"[MASTER] Failed to read current firmware version (got "
+                f"{0 if current_ver is None else len(current_ver)} bytes, expected 44)"
+            )
             self.switch_from_burst_to_standard()
             return False
-        print(f"[MASTER] Current firmware version  : "
-              f"{current_ver[0]}.{current_ver[1]}.{current_ver[2]}.{current_ver[3]}")
+        print(
+            f"[MASTER] Current firmware version  : "
+            f"{current_ver[0]}.{current_ver[1]}.{current_ver[2]}.{current_ver[3]}"
+        )
 
         if not self._check_fw_version_constraints(fw_data, current_ver, "MASTER", force):
             self.switch_from_burst_to_standard()
@@ -1278,8 +1499,10 @@ class adcam:
         print(f"[MASTER] nResidualCRC   : 0x{computed_crc:08X}")
         print(f"[MASTER] Expected CRC   : 0x{expected_crc:08X}")
         if computed_crc != expected_crc:
-            print(f"[MASTER] CRC MISMATCH: computed 0x{computed_crc:08X} "
-                  f"!= expected 0x{expected_crc:08X}")
+            print(
+                f"[MASTER] CRC MISMATCH: computed 0x{computed_crc:08X} "
+                f"!= expected 0x{expected_crc:08X}"
+            )
             return False
         print("[MASTER] CRC OK: computed CRC matches expected CRC.")
 
@@ -1292,20 +1515,20 @@ class adcam:
         packets_to_send = math.ceil(fw_len / FLASH_PAGE_SIZE)
         print(f"\n[MASTER] Writing Firmware packets ({packets_to_send} total)...")
         for i in range(packets_to_send):
-            chunk = bytes(fw_data[i * FLASH_PAGE_SIZE:(i + 1) * FLASH_PAGE_SIZE])
+            chunk = bytes(fw_data[i * FLASH_PAGE_SIZE : (i + 1) * FLASH_PAGE_SIZE])
             if len(chunk) < FLASH_PAGE_SIZE:
-                chunk = chunk.ljust(FLASH_PAGE_SIZE, b'\x00')
+                chunk = chunk.ljust(FLASH_PAGE_SIZE, b"\x00")
             if not self.write_raw_data(chunk, FLASH_PAGE_SIZE):
                 print(f"\n[MASTER] Failed to send packet {i + 1} of {packets_to_send}!")
                 return False
-            print(f"[MASTER] Packet number: {i + 1} / {packets_to_send}", end='\r')
+            print(f"[MASTER] Packet number: {i + 1} / {packets_to_send}", end="\r")
         print()
 
         print("\n[MASTER] Adsd3500 master firmware packets sent successfully!")
         print()
         for i in range(20, -1, -1):
             time.sleep(1)
-            print(f"[MASTER] Waiting for {i} seconds", end='\r')
+            print(f"[MASTER] Waiting for {i} seconds", end="\r")
         print()
 
         status_resp = self.set_register16_response(ADSD3500_CMD_GET_STATUS, 2)
@@ -1324,7 +1547,7 @@ class adcam:
         print()
         for i in range(9, -1, -1):
             time.sleep(1)
-            print(f"[MASTER] Waiting for {i} seconds", end='\r')
+            print(f"[MASTER] Waiting for {i} seconds", end="\r")
         print()
 
         self.get_ChipID(GET_MASTER_CHIP_ID_CMD)
@@ -1336,8 +1559,10 @@ class adcam:
         print("\n[MASTER] After upgrading new firmware")
         updated_ver = self.get_fw_version_burst_mode(GET_MASTER_FIRMWARE_COMMAND)
         if updated_ver is not None and len(updated_ver) >= 4:
-            print(f"[MASTER] Updated firmware version   : "
-                  f"{updated_ver[0]}.{updated_ver[1]}.{updated_ver[2]}.{updated_ver[3]}")
+            print(
+                f"[MASTER] Updated firmware version   : "
+                f"{updated_ver[0]}.{updated_ver[1]}.{updated_ver[2]}.{updated_ver[3]}"
+            )
         time.sleep(1)
 
         self.switch_from_burst_to_standard()
@@ -1358,8 +1583,10 @@ class adcam:
         print("\n[SLAVE] Before upgrading new firmware")
         current_ver = self.get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND)
         if current_ver is not None and len(current_ver) >= 4:
-            print(f"[SLAVE] Current firmware version   : "
-                  f"{current_ver[0]}.{current_ver[1]}.{current_ver[2]}.{current_ver[3]}")
+            print(
+                f"[SLAVE] Current firmware version   : "
+                f"{current_ver[0]}.{current_ver[1]}.{current_ver[2]}.{current_ver[3]}"
+            )
 
         if current_ver is not None and len(current_ver) >= 4:
             if not self._check_fw_version_constraints(fw_data, current_ver, "SLAVE", force):
@@ -1371,8 +1598,10 @@ class adcam:
         print(f"[SLAVE] nResidualCRC   : 0x{computed_crc:08X}")
         print(f"[SLAVE] Expected CRC   : 0x{expected_crc:08X}")
         if computed_crc != expected_crc:
-            print(f"[SLAVE] CRC MISMATCH: computed 0x{computed_crc:08X} "
-                  f"!= expected 0x{expected_crc:08X}")
+            print(
+                f"[SLAVE] CRC MISMATCH: computed 0x{computed_crc:08X} "
+                f"!= expected 0x{expected_crc:08X}"
+            )
             return False
         print("[SLAVE] CRC OK: computed CRC matches expected CRC.")
 
@@ -1385,20 +1614,20 @@ class adcam:
         packets_to_send = math.ceil(fw_len / FLASH_PAGE_SIZE)
         print(f"\n[SLAVE] Writing Firmware packets ({packets_to_send} total)...")
         for i in range(packets_to_send):
-            chunk = bytes(fw_data[i * FLASH_PAGE_SIZE:(i + 1) * FLASH_PAGE_SIZE])
+            chunk = bytes(fw_data[i * FLASH_PAGE_SIZE : (i + 1) * FLASH_PAGE_SIZE])
             if len(chunk) < FLASH_PAGE_SIZE:
-                chunk = chunk.ljust(FLASH_PAGE_SIZE, b'\x00')
+                chunk = chunk.ljust(FLASH_PAGE_SIZE, b"\x00")
             if not self.write_raw_data(chunk, FLASH_PAGE_SIZE):
                 print(f"\n[SLAVE] Failed to send packet {i + 1} of {packets_to_send}!")
                 return False
-            print(f"[SLAVE] Packet number: {i + 1} / {packets_to_send}", end='\r')
+            print(f"[SLAVE] Packet number: {i + 1} / {packets_to_send}", end="\r")
         print()
 
         print("\n[SLAVE] Adsd3500 slave firmware packets sent successfully!")
         print()
         for i in range(20, -1, -1):
             time.sleep(1)
-            print(f"[SLAVE] Waiting for {i} seconds", end='\r')
+            print(f"[SLAVE] Waiting for {i} seconds", end="\r")
         print()
 
         time.sleep(2)
@@ -1421,7 +1650,7 @@ class adcam:
         print()
         for i in range(9, -1, -1):
             time.sleep(1)
-            print(f"[SLAVE] Waiting for {i} seconds", end='\r')
+            print(f"[SLAVE] Waiting for {i} seconds", end="\r")
         print()
 
         self.switch_from_standard_to_burst()
@@ -1430,8 +1659,10 @@ class adcam:
         print("\n[SLAVE] After upgrading new firmware")
         updated_ver = self.get_fw_version_burst_mode(GET_SLAVE_FIRMWARE_COMMAND)
         if updated_ver is not None and len(updated_ver) >= 4:
-            print(f"[SLAVE] Updated firmware version    : "
-                  f"{updated_ver[0]}.{updated_ver[1]}.{updated_ver[2]}.{updated_ver[3]}")
+            print(
+                f"[SLAVE] Updated firmware version    : "
+                f"{updated_ver[0]}.{updated_ver[1]}.{updated_ver[2]}.{updated_ver[3]}"
+            )
         time.sleep(1)
 
         self.switch_from_burst_to_standard()
@@ -1439,31 +1670,33 @@ class adcam:
         return True
 
     def sendHeader(self, FWData, FWLen, target):
-            header = CmdHeaderUnion()
-            header.fields.id8 = 0xAD
-            header.fields.chunk_size16 = FLASH_PAGE_SIZE
-            if target == "master":
-                header.fields.cmd8 = WRITE_MASTER_FIRMWARE_COMMAND
-            else:
-                header.fields.cmd8 = WRITE_SLAVE_FIRMWARE_COMMAND
+        header = CmdHeaderUnion()
+        header.fields.id8 = 0xAD
+        header.fields.chunk_size16 = FLASH_PAGE_SIZE
+        if target == "master":
+            header.fields.cmd8 = WRITE_MASTER_FIRMWARE_COMMAND
+        else:
+            header.fields.cmd8 = WRITE_SLAVE_FIRMWARE_COMMAND
 
-            header.fields.total_size_fw32 = FWLen
-            header.fields.header_checksum32 = 0
-            temp_pack = struct.pack(">H B I", header.fields.chunk_size16, header.fields.cmd8, header.fields.total_size_fw32)
-            header.fields.header_checksum32 = sum(temp_pack)
+        header.fields.total_size_fw32 = FWLen
+        header.fields.header_checksum32 = 0
+        temp_pack = struct.pack(
+            ">H B I", header.fields.chunk_size16, header.fields.cmd8, header.fields.total_size_fw32
+        )
+        header.fields.header_checksum32 = sum(temp_pack)
 
-            crc_params = CrcParametersUnion()
-            crc_params.type = CRC_TYPE.CRC_32bit
-            nResidualCRC = ADI_ROM_CFG_CRC_SEED_VALUE
-            crc_params.initial_crc.crc_32bit = nResidualCRC
-            crc_params.crc_compute_flags = IS_CRC_MIRROR
-            res_crc_32bit = compute_crc_python(crc_params, FWData)
-            if target == "master":
-                print(f"compute_crc_python() for master: returned CRC of: 0x{res_crc_32bit:08X}")
-            else:
-                print(f"compute_crc_python() for slave : returned CRC of: 0x{res_crc_32bit:08X}")
-            nResidualCRC = (~res_crc_32bit) & 0xFFFFFFFF
-            print(f"Calculated nResidualCRC: 0x{nResidualCRC:08X}")
-            header.fields.crc_of_fw32 = nResidualCRC
-            write_header_status = self.write_raw_data(bytes(header), 16)
-            return write_header_status
+        crc_params = CrcParametersUnion()
+        crc_params.type = CRC_TYPE.CRC_32bit
+        nResidualCRC = ADI_ROM_CFG_CRC_SEED_VALUE
+        crc_params.initial_crc.crc_32bit = nResidualCRC
+        crc_params.crc_compute_flags = IS_CRC_MIRROR
+        res_crc_32bit = compute_crc_python(crc_params, FWData)
+        if target == "master":
+            print(f"compute_crc_python() for master: returned CRC of: 0x{res_crc_32bit:08X}")
+        else:
+            print(f"compute_crc_python() for slave : returned CRC of: 0x{res_crc_32bit:08X}")
+        nResidualCRC = (~res_crc_32bit) & 0xFFFFFFFF
+        print(f"Calculated nResidualCRC: 0x{nResidualCRC:08X}")
+        header.fields.crc_of_fw32 = nResidualCRC
+        write_header_status = self.write_raw_data(bytes(header), 16)
+        return write_header_status

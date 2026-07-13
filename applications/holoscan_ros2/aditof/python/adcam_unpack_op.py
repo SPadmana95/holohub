@@ -818,9 +818,7 @@ class ADTFUnpackOp(holoscan.core.Operator):
     def converttojetimage(self, depth_u16):
         # depth_u16: (H, W), uint16
 
-        depth_norm = cp.clip(
-            (depth_u16.astype(cp.float32) / 4000.0) * 255, 0, 255
-        ).astype(cp.uint8)
+        depth_norm = cp.clip((depth_u16.astype(cp.float32) / 4000.0) * 255, 0, 255).astype(cp.uint8)
 
         rgb = self._jet_lut[depth_norm]
         # shape: (H, W, 3), dtype=uint8
@@ -828,9 +826,9 @@ class ADTFUnpackOp(holoscan.core.Operator):
 
     def convert_to_grayscale(self, image, max_val=4096.0):
         # Normalize to 0-255 using the given full-scale value
-        image_normalized = cp.clip(
-            image.astype(cp.float32) * 255.0 / max_val, 0, 255
-        ).astype(cp.uint8)
+        image_normalized = cp.clip(image.astype(cp.float32) * 255.0 / max_val, 0, 255).astype(
+            cp.uint8
+        )
         image_grayscale = cp.repeat(image_normalized[:, :, None], 3, axis=2)
         return image_grayscale
 
@@ -856,15 +854,17 @@ class ADTFUnpackOp(holoscan.core.Operator):
         raw_flat = cp_frame_u8.reshape(-1)  # flatten to 1D (N*5 bytes)
 
         # Subframe 1: depth (uint16 LE) + confidence (uint8) — 3 bytes per pixel
-        sf1 = raw_flat[:N * 3].reshape(N, 3)
-        depth = (sf1[:, 0].astype(cp.uint16) | (sf1[:, 1].astype(cp.uint16) << 8)
-                 ).reshape(self._height, self._width)
-        conf  = sf1[:, 2].astype(cp.uint16).reshape(self._height, self._width)
+        sf1 = raw_flat[: N * 3].reshape(N, 3)
+        depth = (sf1[:, 0].astype(cp.uint16) | (sf1[:, 1].astype(cp.uint16) << 8)).reshape(
+            self._height, self._width
+        )
+        conf = sf1[:, 2].astype(cp.uint16).reshape(self._height, self._width)
 
         # Subframe 2: active brightness (uint16 LE) — 2 bytes per pixel
-        sf2 = raw_flat[N * 3:N * 5].reshape(N, 2)
-        active_brightness = (sf2[:, 0].astype(cp.uint16) | (sf2[:, 1].astype(cp.uint16) << 8)
-                             ).reshape(self._height, self._width)
+        sf2 = raw_flat[N * 3 : N * 5].reshape(N, 2)
+        active_brightness = (
+            sf2[:, 0].astype(cp.uint16) | (sf2[:, 1].astype(cp.uint16) << 8)
+        ).reshape(self._height, self._width)
 
         if self._save == 1:
             # dump or save one frame of data, executed only once
@@ -874,9 +874,9 @@ class ADTFUnpackOp(holoscan.core.Operator):
             active_brightness.astype("uint16").tofile("ab.bin")
             self._save = 0
 
-        depth_c            = self.converttojetimage(depth)
+        depth_c = self.converttojetimage(depth)
         active_brightness_c = self.convert_to_grayscale(active_brightness, max_val=4096.0)
-        conf_c             = self.convert_to_grayscale(conf, max_val=255.0)
+        conf_c = self.convert_to_grayscale(conf, max_val=255.0)
 
         if self._no_of_planes == 1:
             op_output.emit({"Depth": cp_frame_u8}, "output")

@@ -53,7 +53,7 @@ typedef union {
     uint32_t total_size_fw32;    // 4 bytes (total size of firmware)
     uint32_t header_checksum32;  // 4 bytes header checksum
     uint32_t crc_of_fw32;        // 4 bytes CRC of the Firmware Binary
-  };
+  };  // NOLINT(readability/braces)
 } cmd_header_t;
 
 bool Adsd3500::adsd3500_flash(const std::vector<uint8_t>& file_data,

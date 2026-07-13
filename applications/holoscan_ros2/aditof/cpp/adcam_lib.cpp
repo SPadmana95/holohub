@@ -56,7 +56,8 @@ static std::vector<uint8_t> encode_register_blob(const uint16_t* register_blob) 
   std::vector<uint8_t> write_bytes(word_count * sizeof(uint16_t));
 
   core::Serializer serializer(write_bytes.data(), write_bytes.size());
-  for (size_t i = 1; i <= word_count; ++i) { serializer.append_uint16_be(register_blob[i]); }
+  for (size_t i = 1; i <= word_count; ++i)
+    serializer.append_uint16_be(register_blob[i]);
 
   return write_bytes;
 }

@@ -45,6 +45,10 @@
 
 #define LOW_BYTE_MASK 0x00FF
 
+#define READ_PAYLOAD_MODE_MAP_CMD 0x24
+#define READ_PAYLOAD_MODE_MAP_LEN 256
+#define ADCAM_CCB_MODE_COUNT 10
+
 #include <getopt.h>
 #include <cstdint>
 #include <iostream>
@@ -75,6 +79,28 @@ enum class AdcamImagerType : uint16_t {
   ADSD3100 = 1,
   ADTF3066 = 2,
 };
+
+struct AdcamCcbMode {
+  uint8_t user_defined_mode;
+  uint8_t cfg_mode;
+  uint16_t height;
+  uint16_t width;
+  uint8_t n_freq;
+  uint8_t p0_mode;
+  uint8_t temp_mode;
+  uint8_t ini_index;
+  uint8_t default_mode;
+  uint8_t passive_mode_flag;
+  uint8_t n_phases;
+  uint8_t n_captures;
+  uint16_t spare4;
+  uint16_t spare5;
+  uint16_t spare6;
+  uint16_t spare7;
+  uint16_t spare8;
+};
+static_assert(sizeof(AdcamCcbMode) == 24,
+              "AdcamCcbMode must match the 24-byte firmware mode map entry");
 
 // ---------------------------------------------------------------------------
 // QMP capture mode → frame geometry and Set Imager Mode parameters.
@@ -270,6 +296,7 @@ class Adcam {
   void get_status();
   void get_only_status();
   void get_imager_type_and_ccb_version();
+  std::vector<AdcamCcbMode> read_modes_from_ccb();
 
   int probe_adcam_adtf3175();
   std::vector<uint8_t> force_stop_burst_mode();
@@ -320,6 +347,7 @@ class Adcam {
   void stop();
 
  private:
+  std::vector<uint8_t> read_payload_cmd(uint8_t cmd, uint8_t argument, uint16_t payload_len);
   static void append_u16_be(std::vector<uint8_t>& out, uint16_t v);
 
   void i2c_write_read(const std::vector<uint8_t>& write_bytes, size_t read_byte_count,

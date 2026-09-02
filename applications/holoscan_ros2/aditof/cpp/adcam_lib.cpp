@@ -56,8 +56,7 @@ static std::vector<uint8_t> encode_register_blob(const uint16_t* register_blob) 
   std::vector<uint8_t> write_bytes(word_count * sizeof(uint16_t));
 
   core::Serializer serializer(write_bytes.data(), write_bytes.size());
-  for (size_t i = 1; i <= word_count; ++i)
-    serializer.append_uint16_be(register_blob[i]);
+  for (size_t i = 1; i <= word_count; ++i) serializer.append_uint16_be(register_blob[i]);
 
   return write_bytes;
 }
@@ -655,6 +654,51 @@ std::vector<uint8_t> Adcam::get_fw_version_burst_mode(uint8_t cmd) {
         resp.size());
   }
   return resp;
+}
+
+std::vector<uint8_t> Adcam::read_payload_cmd(uint8_t cmd, uint8_t argument, uint16_t payload_len) {
+  const uint8_t len_hi = static_cast<uint8_t>(payload_len >> 8);
+  const uint8_t len_lo = static_cast<uint8_t>(payload_len & 0xFF);
+  const uint16_t checksum = static_cast<uint16_t>(len_hi + len_lo + cmd);
+  uint16_t reg[] = {8,
+                    static_cast<uint16_t>(0xAD00 | len_hi),
+                    static_cast<uint16_t>((len_lo << 8) | cmd),
+                    0x0000,
+                    0x0000,
+                    static_cast<uint16_t>(((checksum & 0xFF) << 8) | ((checksum >> 8) & 0xFF)),
+                    0x0000,
+                    static_cast<uint16_t>(argument << 8),
+                    0x0000};
+  auto resp = set_register16_response(reg, payload_len);
+  if (resp.size() != payload_len) {
+    HOLOSCAN_LOG_ERROR("read_payload_cmd: command 0x{:02X} returned {} bytes (expected {})",
+                       cmd,
+                       resp.size(),
+                       payload_len);
+    resp.clear();
+  }
+  return resp;
+}
+
+std::vector<AdcamCcbMode> Adcam::read_modes_from_ccb() {
+  std::vector<AdcamCcbMode> modes;
+  if (!switch_from_standard_to_burst())
+    return modes;
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  auto payload = read_payload_cmd(READ_PAYLOAD_MODE_MAP_CMD, 0, READ_PAYLOAD_MODE_MAP_LEN);
+  switch_from_burst_to_standard();
+  for (size_t index = 0; index < ADCAM_CCB_MODE_COUNT; ++index) {
+    const size_t offset = index * sizeof(AdcamCcbMode);
+    if (offset + sizeof(AdcamCcbMode) > payload.size())
+      break;
+    AdcamCcbMode mode{};
+    std::memcpy(&mode, payload.data() + offset, sizeof(mode));
+    if (mode.width && mode.height)
+      modes.push_back(mode);
+  }
+  if (modes.empty())
+    HOLOSCAN_LOG_ERROR("read_modes_from_ccb: mode map table holds no valid entries");
+  return modes;
 }
 
 void Adcam::get_chip_status() {

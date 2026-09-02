@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,7 +91,7 @@ class Visualizer:
             Input("subject", "value"),
             prevent_initial_call=True,
         )
-        def update_source(n_intervals, subject):  # noqa: ARG001
+        def update_source(n_intervals, subject):
             """
             Periodically fetch and update data from NATS for all data streams.
 

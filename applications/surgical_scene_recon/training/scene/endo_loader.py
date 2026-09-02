@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,34 @@
 """
 EndoNeRF and SCARED dataset loaders for surgical scene reconstruction.
 MIT-licensed implementation derived from EndoGaussian project.
+
+Provenance: Kept in-tree (training/scene/) because upstream EndoGaussian does not
+publish an installable loader package; this code is adapted to our pipeline's
+EndoNeRF format and imports (scene.cameras, utils.graphics_utils). Not a bundled
+third-party library—derived implementation under the stated license.
 """
 
-import warnings
+import glob
+import json
+import os
+import os.path as osp
+from dataclasses import dataclass
+from typing import NamedTuple
 
-warnings.filterwarnings("ignore")
-
-import glob  # noqa: E402
-import json  # noqa: E402
-import os  # noqa: E402
-import os.path as osp  # noqa: E402
-from dataclasses import dataclass  # noqa: E402
-from typing import NamedTuple  # noqa: E402
-
-import cv2  # noqa: E402
-import fpsample  # noqa: E402
-import imageio.v2 as iio  # noqa: E402
-import numpy as np  # noqa: E402
-import open3d as o3d  # noqa: E402
-import torch  # noqa: E402
-from PIL import Image  # noqa: E402
-from scene.cameras import Camera  # noqa: E402
-from torchvision import transforms as T  # noqa: E402
-from tqdm import tqdm  # noqa: E402
-from tqdm import trange  # noqa: E402
-from utils.graphics_utils import focal2fov  # noqa: E402
+import cv2
+import fpsample
+import imageio.v2 as iio
+import numpy as np
+import open3d as o3d
+import torch
+from PIL import Image
+from scene.cameras import Camera
+from torchvision import transforms as T
+from tqdm import (
+    tqdm,
+    trange,
+)
+from utils.graphics_utils import focal2fov
 
 
 class CameraInfo(NamedTuple):
@@ -68,12 +71,12 @@ class CameraInfo(NamedTuple):
     Znear: float
 
 
-class EndoNeRF_Dataset(object):
+class EndoNeRF_Dataset:
+    """EndoNeRF dataset. Use mode='binocular' for pipeline output (depth/ only; no monodepth/)."""
+
     def __init__(self, datadir, downsample=1.0, test_every=8, mode="binocular"):
-        self.img_wh = (
-            int(640 / downsample),
-            int(512 / downsample),
-        )
+        # img_wh will be set in load_meta() from poses_bounds.npy
+        self.img_wh = None
         self.root_dir = datadir
         self.downsample = downsample
         self.blender2opencv = np.eye(4)
@@ -100,9 +103,19 @@ class EndoNeRF_Dataset(object):
         poses = poses_arr[:, :-2].reshape([-1, 3, 5])  # (N_cams, 3, 5)
         # coordinate transformation OpenGL->Colmap, center poses
         H, W, focal = poses[0, :, -1]
+
+        # Set image dimensions from poses_bounds.npy (not hardcoded)
+        self.img_wh = (
+            int(W / self.downsample),
+            int(H / self.downsample),
+        )
+
         focal = focal / self.downsample
         self.focal = (focal, focal)
-        self.K = np.array([[focal, 0, W // 2], [0, focal, H // 2], [0, 0, 1]]).astype(np.float32)
+        W_ds, H_ds = self.img_wh  # Use downsampled dimensions for K
+        self.K = np.array([[focal, 0, W_ds // 2], [0, focal, H_ds // 2], [0, 0, 1]]).astype(
+            np.float32
+        )
         # poses = np.concatenate([poses[..., :1], -poses[..., 1:2], -poses[..., 2:3], poses[..., 3:4]], -1)
         poses = np.concatenate(
             [poses[..., :1], poses[..., 1:2], poses[..., 2:3], poses[..., 3:4]], -1
@@ -131,6 +144,12 @@ class EndoNeRF_Dataset(object):
             self.depth_paths = get_file_paths("depth")
         elif self.mode == "monocular":
             self.depth_paths = get_file_paths("monodepth")
+            if len(self.depth_paths) == 0:
+                raise ValueError(
+                    "Monocular depth mode expects a 'monodepth/' subdirectory, but none was "
+                    "found. This pipeline's format_conversion.py only writes 'depth/' "
+                    "(binocular layout). Use mode='binocular' for pipeline-generated datasets."
+                )
         else:
             raise ValueError(f"{self.mode} has not been implemented.")
         self.masks_paths = get_file_paths("masks")
@@ -290,7 +309,7 @@ class EndoNeRF_Dataset(object):
         return self.maxtime
 
 
-class SCARED_Dataset(object):
+class SCARED_Dataset:
     def __init__(
         self,
         datadir,
@@ -306,9 +325,7 @@ class SCARED_Dataset(object):
             skip_every = 1
         elif "dataset_3" in datadir:
             skip_every = 4
-        elif "dataset_6" in datadir:
-            skip_every = 8
-        elif "dataset_7" in datadir:
+        elif "dataset_6" in datadir or "dataset_7" in datadir:
             skip_every = 8
 
         self.img_wh = (
@@ -379,7 +396,7 @@ class SCARED_Dataset(object):
             if self.mode == "binocular":
                 disp_dir = osp.join(disps_dir, f"{frame_id}.tiff")
                 disp = iio.imread(disp_dir).astype(np.float32)
-                h, w = disp.shape
+                _h, w = disp.shape
                 with open(osp.join(reproj_dir, f"{frame_id}.json"), "r") as json_file:
                     Q = np.array(json.load(json_file)["reprojection-matrix"])
                 fl = Q[2, 3]
@@ -401,7 +418,7 @@ class SCARED_Dataset(object):
                 # depth = self.depth_near_thresh + (self.depth_far_thresh-self.depth_near_thresh)*depth
                 disp_dir = osp.join(monodisps_dir, f"{frame_id}.png")
                 depth = iio.imread(disp_dir).astype(np.float32) / 255.0
-                h, w = depth.shape
+                _h, w = depth.shape
                 depth = (
                     self.depth_near_thresh
                     + (self.depth_far_thresh - self.depth_near_thresh) * depth
@@ -517,7 +534,11 @@ class SCARED_Dataset(object):
                 color, depth, mask = self.rgbs[idx], self.depths[idx], self.masks[idx]
                 if self.mode == "binocular":
                     mask = np.logical_and(
-                        mask, (depth > self.depth_near_thresh), (depth < self.depth_far_thresh)
+                        mask,
+                        np.logical_and(
+                            depth > self.depth_near_thresh,
+                            depth < self.depth_far_thresh,
+                        ),
                     )
                 pts, colors, _ = self.get_pts_cam(depth, mask, color, disable_mask=False)
                 pts = self.get_pts_wld(pts, self.pose_mat[idx])

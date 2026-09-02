@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@ FROM squidfunk/mkdocs-material:9.6.19
 # Install plugins.
 ADD --chmod=755 https://astral.sh/uv/install.sh /install.sh
 RUN /install.sh && rm /install.sh
-RUN apk add gcc python3-dev musl-dev linux-headers
+RUN apk add --no-cache gcc python3-dev musl-dev linux-headers doxygen
 COPY doc/website/requirements.txt /tmp/
 RUN ~/.local/bin/uv pip install --system --no-cache-dir -r /tmp/requirements.txt
 

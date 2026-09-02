@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,13 @@ RUN git clone --depth 1 https://github.com/DepthAnything/Depth-Anything-V2.git \
     && mv depth-anything-tensorrt/depth_anything_v2/dpt.py Depth-Anything-V2/depth_anything_v2 \
     && mv depth-anything-tensorrt/depth_anything_v2/export_v2.py Depth-Anything-V2
 
-RUN pip install onnx onnx-graphsurgeon onnxscript \
+# Note: onnxscript is intentionally left unpinned. The upstream Depth-Anything-V2
+# repository does not pin the torch version, so the torch version shipped in the
+# base image can change over time. onnxscript loads a torch-version-specific
+# submodule (e.g. onnxscript._framework_apis.torch_2_11) during ONNX export, so a
+# pinned onnxscript can break when the base image torch version is bumped. Leaving
+# it unpinned lets pip resolve a version compatible with the installed torch.
+RUN pip install onnx==1.19.1 onnx-graphsurgeon==0.5.8 onnxscript \
     && pip install -r Depth-Anything-V2/requirements.txt
 
 # Change to the repository directory
@@ -89,7 +95,7 @@ WORKDIR /app/Depth-Anything-V2
 COPY --from=builder /app/Depth-Anything-V2/*.onnx /models/.
 
 #
-# Holohub dev setup 
+# Holohub dev setup
 #
 RUN mkdir -p /tmp/scripts
 COPY holohub /tmp/scripts/

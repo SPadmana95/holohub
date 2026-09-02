@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ def merge_hparams(args, config: dict):
     """
     params = ["OptimizationParams", "ModelHiddenParams", "ModelParams", "PipelineParams"]
     for param in params:
-        if param in config.keys():
+        if param in config:
             for key, value in config[param].items():
                 if hasattr(args, key):
                     setattr(args, key, value)

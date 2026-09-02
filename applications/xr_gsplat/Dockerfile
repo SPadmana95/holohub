@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,8 +48,8 @@ RUN apt update \
         libxcb-randr0-dev \
         libxrandr-dev \
         libxxf86vm-dev \
-        mesa-common-dev \ 
-        libopenxr-loader1 \ 
+        mesa-common-dev \
+        libopenxr-loader1 \
         libopenxr-dev \
         libopenxr1-monado \
         clang-format \

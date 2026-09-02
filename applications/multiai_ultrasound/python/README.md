@@ -5,16 +5,30 @@ This application demonstrates how to run multiple inference pipelines in a singl
 The Multi AI operators (inference and postprocessor) use APIs from the Holoscan Inference module to extract data, initialize and execute the inference workflow, process, and transmit data for visualization.
 
 The applications uses models and echocardiogram data from iCardio.ai. The models include:
+
 - a Plax chamber model, that identifies four critical linear measurements of the heart
 - a Viewpoint Classifier model, that determines confidence of each frame to known 28 cardiac anatomical view as defined by the guidelines of the American Society of Echocardiography
 - an Aortic Stenosis Classification model, that provides a score which determines likeability for the presence of aortic stenosis
 
-The default configuration (`multiai_ultrasound.yaml`) runs on default GPU (GPU-0). Multi-AI Ultrasound application can be executed on multiple GPUs with the Holoscan SDK version 0.6 onwards. A sample configuration file for multi GPU configuration for multi-AI ultrasound application (`mgpu_multiai_ultrasound.yaml`) is present in both `cpp` and `python` applications. The multi-GPU configuration file is designed for a system with at least 2 GPUs connected to the same PCIE network.
+The default configuration (`multiai_ultrasound.yaml`) runs on the default GPU (GPU 0).
 
-### Requirements
+## Multi-GPU requirements and limitations
+
+The sample multi-GPU configuration (`mgpu_multiai_ultrasound.yaml`) assigns inference
+models to GPU 0 and GPU 1 from a single application process. It requires at least two
+compatible GPUs that CUDA can enumerate together in that process, such as a supported
+homogeneous discrete-GPU system with both GPUs on the same PCIe network. Seeing both GPUs
+in `nvidia-smi` does not by itself guarantee that the configuration is supported.
+
+The heterogeneous iGPU and dGPU combination on IGX Thor is not supported by this sample.
+As of CUDA 13.2, an IGX Thor process cannot enumerate both types of GPU together; CUDA
+13.2 supports their concurrent use only from separate processes. On IGX Thor, use the
+default single-GPU configuration and select one GPU for the application.
+
+## Requirements
 
 - Python 3.9+
-- The provided applications are configured to either use the AJA capture card for input stream, or a pre-recorded video of the echocardiogram (replayer). Follow the [setup instructions from the user guide](https://docs.nvidia.com/holoscan/sdk-user-guide/aja_setup.html) to use the AJA capture card.
+- The provided applications are configured to either use the AJA capture card for input stream, or a pre-recorded video of the echocardiogram (replayer). Follow the [AJA Video Systems setup guide](../../../operators/aja_source/setup.md) to use the AJA capture card.
 
 ### Data
 
@@ -32,13 +46,13 @@ You should refer to the [glossary](../../README.md#Glossary) for the terms defin
 
 If your Holoscan SDK installation type is:
 
-* python wheels:
+- python wheels:
 
   ```bash
   export PYTHONPATH=$PYTHONPATH:<HOLOHUB_BUILD_DIR>/python/lib
   ```
 
-* otherwise:
+- otherwise:
 
   ```bash
   export PYTHONPATH=$PYTHONPATH:<HOLOSCAN_INSTALL_DIR>/python/lib:<HOLOHUB_BUILD_DIR>/python/lib
@@ -46,19 +60,26 @@ If your Holoscan SDK installation type is:
 
 Next, run the commands of your choice:
 
-* Using a pre-recorded video
+- Using a pre-recorded video
+
     ```bash
     cd <HOLOHUB_SOURCE_DIR>/applications/multiai_ultrasound/python
     python3 multiai_ultrasound.py --source=replayer --data <DATA_DIR>/multiai_ultrasound
     ```
 
-* Using a pre-recorded video on multi-GPU system
+- Using a pre-recorded video on multi-GPU system
+
+    > **Note:** This command uses both GPUs from one process and is not supported with the
+    > IGX Thor iGPU and dGPU combination. See
+    > [Multi-GPU requirements and limitations](#multi-gpu-requirements-and-limitations).
+
     ```bash
     cd <HOLOHUB_SOURCE_DIR>/applications/multiai_ultrasound/python
     python3 multiai_ultrasound.py --config mgpu_multiai_ultrasound.yaml --source=replayer --data <DATA_DIR>/multiai_ultrasound
     ```
 
-* Using an AJA card
+- Using an AJA card
+
     ```bash
     cd <HOLOHUB_SOURCE_DIR>/applications/multiai_ultrasound/python
     python3 multiai_ultrasound.py --source=aja

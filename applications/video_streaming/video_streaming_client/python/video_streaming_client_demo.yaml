@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 %YAML 1.2
@@ -48,15 +48,15 @@ video_streaming_client:
   width: 640
   height: 480
   fps: 30
-  
+
   # Server connection settings
   server_ip: "127.0.0.1"
   signaling_port: 48010
-  
+
   # Operation mode
   receive_frames: true
   send_frames: true
-  
+
   # Frame validation
   min_non_zero_bytes: 10
 

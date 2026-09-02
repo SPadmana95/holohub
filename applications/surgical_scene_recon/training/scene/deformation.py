@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +27,14 @@ MIT-licensed implementation derived from EndoGaussian and 4DGaussians projects.
 """
 
 import torch
-import torch.nn as nn
-import torch.nn.init as init
 from scene.hexplane import HexPlaneField
+from torch import nn
+from torch.nn import init
 
 
 class Deformation(nn.Module):
     def __init__(self, D=8, W=256, input_ch=27, input_ch_time=9, skips=None, args=None):
-        super(Deformation, self).__init__()
+        super().__init__()
         if skips is None:
             skips = []
         self.D = D
@@ -133,7 +133,7 @@ class Deformation(nn.Module):
 
 class deform_network(nn.Module):
     def __init__(self, args):
-        super(deform_network, self).__init__()
+        super().__init__()
         net_width = args.net_width
         timebase_pe = args.timebase_pe
         defor_depth = args.defor_depth

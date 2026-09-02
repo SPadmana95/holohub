@@ -12,7 +12,7 @@ quickly as the decoding can be performed. This application uses
 
 ## Requirements
 
-- NVIDIA GPU with display driver **>= 580** for CUDA 13 support. See [the Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/sdk_installation.html)
+- NVIDIA GPU with display driver **>= 580** for CUDA 13 support. See [the Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation)
 for a list of all Holoscan SDK supported platforms.
   - Orin platforms (Jetpack 6.x, IGX OS 1.x) are not supported at this time.
 - This application is configured to use H.264 elementary stream from endoscopy
@@ -30,13 +30,13 @@ The data is automatically downloaded when building the application.
 
 ## Build and Run the H.264 Endoscopy Tool Tracking Application
 
-### C++
+### C++ (command line)
 
 ```bash
 ./holohub run h264_endoscopy_tool_tracking --language cpp
 ```
 
-### Python
+### Python (command line)
 
 Separate build and run commands are required to address the known [symbol loading issue](../README.md#symbol-error-at-load).
 
@@ -60,32 +60,9 @@ Open and edit the [Dockerfile](../Dockerfile) and uncomment line 66:
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/aarch64-linux-gnu/tegra/
 ```
 
-
 ## Enable recording of the output
 
 The recording of the output can be enabled by setting `record_output` flag in
 the config file
 `<build_dir>/applications/h264/endoscopy_tool_tracking/h264_endoscopy_tool_tracking.yaml`
 to `true`.
-
-
-## Dev Container
-
-To start the the Dev Container, run the following command from the root directory of Holohub:
-
-```bash
-./holohub vscode h264
-```
-
-### VS Code Launch Profiles
-
-#### C++
-
-Use the **(gdb) h264_endoscopy_tool_tracking/cpp** launch profile to run and debug the C++ application.
-
-#### Python
-
-There are a couple of launch profiles configured for this application:
-
-1. **(debugpy) h264_endoscopy_tool_tracking/python**: Launch the h.264 Endoscopy Tool Tracking application with the ability to debug Python code.
-2. **(pythoncpp) h264_endoscopy_tool_tracking/python**: Launch the h.264 Endoscopy Tool Tracking application with the ability to debug both Python and C++ code.

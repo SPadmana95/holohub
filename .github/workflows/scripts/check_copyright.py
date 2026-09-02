@@ -1,5 +1,5 @@
 """
-SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 SPDX-License-Identifier: Apache-2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ CheckNonSPDX = re.compile(
 
 
 def check_this_file(f):
-    # This check covers things like symlinks which point to files that DNE
+    # This check covers things like symlinks which point to files that do not exist
     if not (os.path.exists(f)):
         return False
     if gitutils and gitutils.is_file_empty(f):
@@ -107,7 +107,7 @@ def check_copyright(f, update_current_year, ignore_year_mismatch=False):
     Checks for copyright headers and their years
     """
     errs = []
-    this_year = datetime.datetime.now().year
+    this_year = datetime.datetime.now(datetime.timezone.utc).year
     line_num = 0
     cr_found = False
     year_matched = False
@@ -139,7 +139,12 @@ def check_copyright(f, update_current_year, ignore_year_mismatch=False):
     fp.close()
     # copyright header itself not found
     if not cr_found:
-        e = [f, 0, "Copyright header missing or formatted incorrectly (manual fix required)", None]
+        e = [
+            f,
+            0,
+            "Copyright header missing or formatted incorrectly (manual fix required)",
+            None,
+        ]
         errs.append(e)
     # even if the year matches a copyright header, make the check pass
     if year_matched:
@@ -163,8 +168,7 @@ def check_copyright(f, update_current_year, ignore_year_mismatch=False):
                 for _, line_num, __, replacement in errs_update:
                     lines[line_num - 1] = replacement
                 with open(f, "w", encoding="utf-8") as out_file:
-                    for new_line in lines:
-                        out_file.write(new_line)
+                    out_file.writelines(lines)
         errs = [x for x in errs if x[-1] is None]
 
     return errs
@@ -237,7 +241,7 @@ def check_copyright_main():
         help="If set, ignore year mismatches in copyright headers (when current year is not within the copyright year range).",
     )
 
-    (args, dirs) = argparser.parse_known_args()
+    args, dirs = argparser.parse_known_args()
 
     # Read excludes from config file if specified
     config_excludes = []
@@ -253,7 +257,7 @@ def check_copyright_main():
                 config_path = os.path.join(script_dir, os.path.basename(config_path))
 
         if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     # Skip empty lines and comments
@@ -308,7 +312,7 @@ def check_copyright_main():
         print("Copyright headers incomplete in some of the files!")
         for file_name, line_no, err_msg, _ in errors:
             print(f"  {file_name}:{line_no} Issue: {err_msg}")
-        print("")
+        print()
         n_fixable = sum(1 for e in errors if e[-1] is not None)
         if n_fixable > 0:
             print(

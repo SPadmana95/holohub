@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import importlib.util
+import logging
 import os
 import sys
 from argparse import ArgumentParser
@@ -29,7 +30,6 @@ from holoscan.resources import (
     BlockMemoryPool,
     CudaStreamPool,
     MemoryStorageType,
-    UnboundedAllocator,
 )
 
 from holohub.lstm_tensor_rt_inference import LSTMTensorRTInferenceOp
@@ -87,9 +87,8 @@ class EndoscopyApp(Application):
 
         # Optional parameters affecting the graph created by compose.
         self.record_type = record_type
-        if record_type is not None:
-            if record_type not in ("input", "visualizer"):
-                raise ValueError("record_type must be either ('input' or 'visualizer')")
+        if record_type is not None and record_type not in ("input", "visualizer"):
+            raise ValueError("record_type must be either ('input' or 'visualizer')")
         self.source = source
         self.postprocessor = postprocessor
         if data == "none":
@@ -123,17 +122,16 @@ class EndoscopyApp(Application):
 
             width = deltacast_kwargs["width"]
             height = deltacast_kwargs["height"]
-            rdma = deltacast_kwargs["rdma"]
-            is_overlay_enabled = deltacast_kwargs["enable_overlay"]
+            rdma = deltacast_kwargs.get("rdma", False)
+            is_overlay_enabled = deltacast_kwargs.get("enable_overlay", False)
 
             source_block_size = width * height * 4 * 4
             source_num_blocks = 3 if rdma else 4
 
-            videomaster = lazy_import("holohub.videomaster")
+            videomaster = lazy_import("holoscan.deltacast")
             source = videomaster.VideoMasterSourceOp(
                 self,
                 name="deltacast",
-                pool=UnboundedAllocator(self, name="pool"),
                 rdma=rdma,
                 board=deltacast_kwargs["board"],
                 input=deltacast_kwargs["input"],
@@ -170,17 +168,28 @@ class EndoscopyApp(Application):
                 from holoscan.resources import RMMAllocator
 
                 source.add_arg(allocator=RMMAllocator(self, name="video_replayer_allocator"))
-            except Exception:
-                pass
+            except (
+                ArithmeticError,
+                AssertionError,
+                AttributeError,
+                EOFError,
+                ImportError,
+                LookupError,
+                OSError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ):
+                logging.getLogger(__name__).debug("Expected operation failure", exc_info=True)
             # 4 bytes/channel, 3 channels
             source_block_size = width * height * 3 * 4
             source_num_blocks = 2
 
-        source_pool_kwargs = dict(
-            storage_type=MemoryStorageType.DEVICE,
-            block_size=source_block_size,
-            num_blocks=source_num_blocks,
-        )
+        source_pool_kwargs = {
+            "storage_type": MemoryStorageType.DEVICE,
+            "block_size": source_block_size,
+            "num_blocks": source_num_blocks,
+        }
         if record_type is not None:
             if ((record_type == "input") and (self.source != "replayer")) or (
                 record_type == "visualizer"

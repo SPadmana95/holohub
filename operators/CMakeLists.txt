@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,31 +14,43 @@
 # limitations under the License.
 
 # Add operators (in alphabetical order)
-add_holohub_operator(advanced_network)
 add_holohub_operator(aja_source)
 add_holohub_operator(apriltag_detector)
-add_holohub_operator(basic_network)
+add_holohub_operator(atracsys_camera DEPENDS OPERATORS atracsys_mode_switcher)
+add_holohub_operator(atracsys_mode_switcher)
 add_holohub_operator(cvcuda_holoscan_interop)
 add_subdirectory(deidentification)
 add_subdirectory(dds)
-add_holohub_operator(deltacast_videomaster DEPENDS EXTENSIONS deltacast_videomaster)
+add_holohub_operator(display_gpu_resident)
+add_holohub_operator(ucxx_send_receive)
 add_holohub_operator(emergent_source DEPENDS EXTENSIONS emergent_source)
 add_holohub_operator(fft)
+add_holohub_operator(foxglove)
 add_holohub_operator(gamma_correction DEPENDS OPERATORS slang_shader)
 add_holohub_operator(grpc_operators)
+add_holohub_operator(gstreamer)
 add_holohub_operator(high_rate_psd)
+add_holohub_operator(csi_to_bayer_gpu_resident)
+add_holohub_operator(image_processor_gpu_resident)
+# HSB operators (require HSB to be installed in the container)
+add_holohub_operator(hsb_roce_receiver_nmd)
+add_holohub_operator(hsb_roce_receiver_doca_gpunetio)
 add_holohub_operator(holoscan_ros2)
 add_holohub_operator(iio_controller)
 add_holohub_operator(low_rate_psd)
 add_holohub_operator(lstm_tensor_rt_inference DEPENDS EXTENSIONS lstm_tensor_rt_inference)
 add_holohub_operator(npp_filter)
 add_subdirectory(nvidia_video_codec)
+add_holohub_operator(online_video_reasoner)
 add_holohub_operator(openigtlink)
 add_holohub_operator(prohawk_video_processing)
+add_subdirectory(pva_radar)
 add_holohub_operator(qt_video)
 add_holohub_operator(realsense_camera)
+add_holohub_operator(st2110_source)
 add_holohub_operator(streaming_client)
 add_holohub_operator(streaming_server)
+add_holohub_operator(tapnext_inference DEPENDS EXTENSIONS tapnext_inference)
 add_subdirectory(orsi)
 add_holohub_operator(slang_shader)
 # Unified streaming operator
@@ -55,12 +67,3 @@ add_holohub_operator(vtk_renderer)
 add_holohub_operator(yuan_qcap DEPENDS EXTENSIONS yuan_qcap)
 add_holohub_operator(ehr_query_llm)
 add_holohub_operator(xr)
-
-# install
-install(
-    DIRECTORY "${CMAKE_BINARY_DIR}/python/lib/holohub"
-    DESTINATION python/lib
-    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-    PATTERN "__pycache__" EXCLUDE
-)

@@ -2,9 +2,11 @@
 
 This operator provides support for Emergent Vision Technologies cameras as video sources. This operator enables high-performance video streaming through Mellanox ConnectX SmartNIC using the Rivermax SDK.
 
+Follow the [Emergent Vision Technologies setup guide](setup.md) to install the EVT hardware, Emergent SDK, and ConnectX configuration before using this operator.
+
 ## Overview
 
-The `EmergentSourceOp` is designed to capture video streams from Emergent Vision Technologies cameras with high frame rates and resolution support. It leverages RDMA (Remote Direct Memory Access) capabilities for efficient data transfer and supports various camera parameters for optimal performance. Please refer to [Holoscan EVT Setup](https://docs.nvidia.com/holoscan/sdk-user-guide/emergent_setup.html) for more information.
+The `EmergentSourceOp` is designed to capture video streams from Emergent Vision Technologies cameras with high frame rates and resolution support. It leverages RDMA (Remote Direct Memory Access) capabilities for efficient data transfer and supports various camera parameters for optimal performance.
 
 ## Features
 
@@ -25,7 +27,7 @@ The `EmergentSourceOp` is designed to capture video streams from Emergent Vision
 ## Parameters
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `signal` | `gxf::Handle<gxf::Transmitter>` | - | Output signal channel |
 | `width` | `uint32_t` | 4200 | Width of the video stream in pixels |
 | `height` | `uint32_t` | 2160 | Height of the video stream in pixels |

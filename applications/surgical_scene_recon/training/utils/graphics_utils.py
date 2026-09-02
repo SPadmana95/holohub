@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@ MIT-licensed clean-room implementation using standard computer graphics algorith
 """
 
 import math
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import numpy as np
 import torch
@@ -92,7 +92,7 @@ def getWorld2View(R: np.ndarray, t: np.ndarray) -> np.ndarray:
 
 
 def getWorld2View2(
-    R: np.ndarray, t: np.ndarray, translate: Optional[np.ndarray] = None, scale: float = 1.0
+    R: np.ndarray, t: np.ndarray, translate: np.ndarray | None = None, scale: float = 1.0
 ) -> np.ndarray:
     """
     Construct world-to-view transformation matrix with optional translation and scaling.

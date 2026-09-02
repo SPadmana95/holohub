@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +15,41 @@
 
 import os
 import sys
-from typing import List
+import warnings
 
 import torch
-from torchvision.models import ResNet50_Weights, detection
-from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
+
+
+def ignore_known_torch_cuda_capability_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        module=r"torch\.cuda",
+        message=r"\n.*Found GPU0 NVIDIA GB10.*",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        module=r"torch\.cuda",
+        message=r"\n.*Found GPU0 DRIVE-P2021.*capability.*10\.0\.",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        module=r"torch\.cuda",
+        message=(
+            r"(?:\n[ \t]*)?Found GPU0 Orin which is of "
+            r"(?:cuda capability 8\.7|compute capability \(CC\) 8\.7)"
+            r"\.(?:\n|$)"
+        ),
+    )
+
+
+# Suppress PyTorch's UserWarning: Failed to load image Python extension: 'libnvjpeg.so.12: cannot open shared object file: No such file or directory'
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", UserWarning)
+    from torchvision.models import ResNet50_Weights, detection
+    from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
 
 os.environ["TORCH_HOME"] = os.getcwd()
 
@@ -27,13 +57,34 @@ model_file = "frcnn_resnet50_t.pt"
 if len(sys.argv) > 1:
     model_file = sys.argv[1]
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Suppress known PyTorch CUDA compatibility warnings for platforms where model
+# generation can continue successfully despite PyTorch not listing the GPU SM.
+with warnings.catch_warnings():
+    ignore_known_torch_cuda_capability_warnings()
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 det_model = detection.fasterrcnn_resnet50_fpn(
     weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT,
     progress=True,
     weights_backbone=ResNet50_Weights.DEFAULT,
-).to(DEVICE)
+)
+
+# Suppress PyTorch 2.9 known UserWarning for GB10 / sm_120 (capability 12.x).
+# \\n    Found GPU0 NVIDIA GB10 which is of cuda capability 12.1.
+# \\n    Minimum and Maximum cuda capability supported by this version of PyTorch is
+# \\n    (8.0) - (12.0)\\n
+# https://github.com/pytorch/pytorch/issues/172629
+# https://forums.developer.nvidia.com/t/dgx-dashboard-playbook-pytorch-in-sample-code-not-supporting-cuda-12-1/350762
+# Also suppress the same non-fatal compatibility warning for DRIVE-P2021.
+# \\n    Found GPU0 DRIVE-P2021 which is of compute capability (CC) 10.0.
+# Remove the Orin filter after adopting and validating PyTorch 2.14+ built for CUDA 13.2+.
+# Context: https://github.com/nvidia-holoscan/holohub/pull/1687#issuecomment-5323551040
+# Also suppress the same non-fatal compatibility warning for Orin.
+# \n    Found GPU0 Orin which is of cuda capability 8.7.
+# Found GPU0 Orin which is of compute capability (CC) 8.7.
+with warnings.catch_warnings():
+    ignore_known_torch_cuda_capability_warnings()
+    det_model = det_model.to(DEVICE)
 
 
 # Wraps the model to incorporate a permutation operation.
@@ -43,7 +94,7 @@ class RCNNWrapper(torch.nn.Module):
         super().__init__()
         self.model = det_model
 
-    def forward(self, x: List[torch.Tensor]):
+    def forward(self, x: list[torch.Tensor]):
         # Move input to model device and permute to expected format
         img = x[0]
         if img.shape[0] == 3:

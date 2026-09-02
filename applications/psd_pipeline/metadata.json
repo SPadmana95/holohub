@@ -3,16 +3,24 @@
         "name": "VITA 49 Power Spectral Density",
         "authors": [
             {
-                "name": "John Moon <john.moon@vts-i.com>",
-                "affiliation": "Valley Tech Systems, Inc."
+                "name": "John Moon <john.moon@voyagertechnologies.com>",
+                "affiliation": "Voyager Technologies, Inc."
             },
             {
-                "name": "Eric Ferrara <eric.ferrara@vts-i.com>",
-                "affiliation": "Valley Tech Systems, Inc."
+                "name": "Eric Ferrara <eric.ferrara@voyagertechnologies.com>",
+                "affiliation": "Voyager Technologies, Inc."
             },
             {
-                "name": "Matthew Luckenbihl <matthew.luckenbihl@vts-i.com>",
-                "affiliation": "Valley Tech Systems, Inc."
+                "name": "Matthew Luckenbihl <matthew.luckenbihl@voyagertechnologies.com>",
+                "affiliation": "Voyager Technologies, Inc."
+            },
+            {
+                "name": "Dana Kimball <dana.kimball@voyagertechnologies.com>",
+                "affiliation": "Voyager Technologies, Inc."
+            },
+            {
+                "name": "Christopher Zinser <christopher.zinser@voyagertechnologies.com>",
+                "affiliation": "Voyager Technologies, Inc."
             }
         ],
         "language": "C++",
@@ -29,11 +37,13 @@
                 "2.8.0",
                 "2.9.0",
                 "3.0.0",
-                "3.1.0"
+                "3.1.0",
+                "4.0.0"
             ]
         },
         "platforms": ["x86_64"],
         "tags": ["Signal Processing", "Networking and Distributed Computing", "PSD", "GPUDirect", "UDP"],
+        "dockerfile": "pkg/holoscan-networking/Dockerfile",
         "ranking": 3,
         "requirements": {
             "operators": [
@@ -51,6 +61,11 @@
               "name": "vita49-rs",
               "version": "0.0.3",
               "url": "https://github.com/voyager-tech-inc/vita49-rs"
+            },
+            {
+              "name": "DAQIRI",
+              "version": "0.1.0",
+              "url": "https://github.com/NVIDIA/daqiri"
             }]
         },
         "run": {

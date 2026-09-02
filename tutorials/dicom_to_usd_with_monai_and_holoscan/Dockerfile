@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 ARG BASE_IMAGE
 ARG GPU_TYPE
 
-FROM ${BASE_IMAGE} as base-img
+FROM ${BASE_IMAGE} AS base-img
 ARG DEBIAN_FRONTEND=noninteractive
 
 ENV WORKDIR=/opt/nvidia
@@ -35,7 +35,7 @@ RUN apt-get update && \
         p7zip-rar \
         python3-distutils \
         libjpeg-turbo8-dev
-        
+
 # Install Python MONAI Deploy requirements while using the `holoscan` package provided in the base container
 COPY ./tutorials/dicom_to_usd_with_monai_and_holoscan/requirements.txt ${WORKDIR}
 RUN pip install -q -r requirements.txt && \
@@ -80,7 +80,7 @@ fi
 ############################################################
 # Container environment
 ############################################################
-    
+
 # MONAI Deploy environment variables
 ENV HOLOSCAN_INPUT_PATH ${WORKDIR}/${DATA_NAME}/dcm
 ENV HOLOSCAN_MODEL_PATH ${WORKDIR}/${DATA_NAME}/model.ts

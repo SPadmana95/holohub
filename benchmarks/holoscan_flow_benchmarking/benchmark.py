@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,24 @@ from nvitop import Device
 sys.path.append(os.path.dirname(__file__))
 from patch_python_sources import patch_directory, restore_backups
 
-# Add holohub root to path for importing utilities
 script_dir = os.path.dirname(os.path.abspath(__file__))
 holohub_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
-if holohub_root not in sys.path:
-    sys.path.insert(0, holohub_root)
 
-from utilities.cli.holohub import HoloHubCLI  # noqa: E402
-from utilities.cli.util import build_holohub_path_mapping, resolve_path_prefix  # noqa: E402
+try:
+    from holoscan_cli.cli import HoloscanCLI
+    from holoscan_cli.utils.holohub import (
+        build_holohub_path_mapping,
+        resolve_path_prefix,
+    )
+except ImportError as exc:
+    sys.exit(
+        f"{exc}\n"
+        "The benchmarking tool now reads project metadata via the `holoscan-cli`\n"
+        "package. Install it before running outside the HoloHub\n"
+        "container, e.g. `pip install holoscan-cli` (see\n"
+        "https://github.com/nvidia-holoscan/holoscan-cli for pinned/pre-release\n"
+        "specs)."
+    )
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s %(levelname)s: %(message)s", level=logging.DEBUG)
@@ -82,9 +92,9 @@ def run_command(app_launch_command, env):
             [app_launch_command],
             shell=True,
             env=env,
-            universal_newlines=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            text=True,
+            capture_output=True,
+            check=False,
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running command: {e}")
@@ -131,18 +141,17 @@ def find_python_files_to_patch(project_metadata, holohub_root_path):
     if f"<{prefix}app_source>" in command and source_folder and os.path.isdir(source_folder):
         directories_to_patch.append(source_folder)
         logger.info(f"Will patch source directory: {source_folder}")
-    if f"<{prefix}app_bin>" in command:
-        if source_folder:
-            app_build_dir = path_mapping.get(f"{prefix}app_bin", "")
-            if app_build_dir and os.path.isdir(app_build_dir):
-                directories_to_patch.append(app_build_dir)
-                logger.info(f"Will patch build directory: {app_build_dir}")
-            else:
-                logger.warning(f"Build directory not found: {app_build_dir}")
-                # Still add source directory as fallback
-                if source_folder and os.path.isdir(source_folder):
-                    directories_to_patch.append(source_folder)
-                    logger.info(f"Fallback to patching source directory: {source_folder}")
+    if f"<{prefix}app_bin>" in command and source_folder:
+        app_build_dir = path_mapping.get(f"{prefix}app_bin", "")
+        if app_build_dir and os.path.isdir(app_build_dir):
+            directories_to_patch.append(app_build_dir)
+            logger.info(f"Will patch build directory: {app_build_dir}")
+        else:
+            logger.warning(f"Build directory not found: {app_build_dir}")
+            # Still add source directory as fallback
+            if source_folder and os.path.isdir(source_folder):
+                directories_to_patch.append(source_folder)
+                logger.info(f"Fallback to patching source directory: {source_folder}")
     # If no placeholders found but it's a Python command, patch source directory
     if not directories_to_patch and "python" in command.lower() and source_folder:
         workdir = run_config.get("workdir", "")
@@ -260,13 +269,24 @@ assignment in Holoscan's Inference operator.",
 
     args = parser.parse_args()
 
-    # Get project metadata using HoloHub CLI
-    cli = HoloHubCLI()
+    # Get project metadata using the installed holoscan-cli.
+    cli = HoloscanCLI()
     project_metadata = None
     try:
         project_metadata = cli.find_project(args.holohub_application, language=args.language)
         logger.info(f"Found project metadata for {args.holohub_application}")
-    except Exception as e:
+    except (
+        ArithmeticError,
+        AssertionError,
+        AttributeError,
+        EOFError,
+        ImportError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as e:
         logger.warning(f"Could not find project metadata: {e}")
 
     # find and patch Python files
@@ -352,7 +372,7 @@ assignment in Holoscan's Inference operator.",
             env["HOLOSCAN_SCHEDULER"] = scheduler
             env["HOLOSCAN_EVENTBASED_WORKER_THREADS"] = str(args.num_worker_threads)
         elif scheduler != "greedy":
-            logger.error("Unsupported scheduler ", scheduler)
+            logger.error("Unsupported scheduler %s", scheduler)
             sys.exit(1)
         # No need to set the scheduler for greedy scheduler
         for i in range(1, args.runs + 1):

@@ -1,0 +1,128 @@
+# Holoscan Modules
+
+A **Holoscan Module** is a library project that extends the Holoscan SDK API.
+
+> [!NOTE]
+> **See also:**
+>
+> - [Tutorial — Create a Holoscan Module](../tutorials/holoscan-modules/create-a-module/README.md) for an end-to-end walkthrough from scaffold to published binary packages.
+> - [Tutorial — Use a Holoscan Module](../tutorials/holoscan-modules/use-a-module/README.md) for the consumer side: declaring dependencies, installing binaries, and embedding from source.
+
+## Creating a New External Module
+
+Run the following command to initialize a new module adhering to HoloHub conventions
+from the provided cookiecutter template. The template will prompt for several project
+details (name, project languages, description) before creating the new project directory
+on your local system. Pass the unprefixed module name; the template creates a
+`holoscan-<name>` repository directory.
+
+```bash
+pip install cookiecutter
+
+./holohub create my-module --template modules/template
+```
+
+The generated project is a self-contained git repository with its own operators/,
+applications/, tests/, and packaging files. It is intended to be hosted outside of
+HoloHub (e.g. a dedicated GitHub repo) and declared as an external dependency in
+consuming applications' metadata.json.
+
+## Declaring an In-Tree Module
+
+Some Holoscan Modules are best maintained directly inside the HoloHub monorepo —
+either because their operator libraries are already there or because tight integration
+with HoloHub's CI and tooling is desirable. These are called **in-tree modules**.
+
+An in-tree module uses a **descriptor-only** layout: the operator sources stay in
+`operators/<name>/` (and applications in `applications/<name>/`) while a thin
+descriptor directory under `modules/<module-name>/` holds the module-level metadata
+and packaging files.
+
+```text
+modules/
+└── holoscan-gstreamer/          ← module descriptor (this directory)
+    ├── metadata.json            ← module schema v2: identity, namespace, operators list
+    ├── pyproject.toml           ← wheel packaging (drives HoloHub's CMake selectively)
+    └── Dockerfile               ← dev container for module-focused development
+
+operators/gstreamer/             ← operator sources (unchanged, in-tree as always)
+applications/gstreamer/          ← application sources (unchanged)
+```
+
+### Creating an In-Tree Module Descriptor
+
+1. Create `modules/<holoscan-name>/` (e.g. `modules/holoscan-gstreamer/`).
+2. Add `metadata.json` using the `holohub/module/v2` schema. Omit `source_repository`
+   (the module lives in HoloHub). Set `operators` to the list of HoloHub `OP_*` names
+   the module provides.
+3. Add `pyproject.toml` with `cmake.source-dir = "../.."` pointing at HoloHub root,
+   and `-DOP_<name>=ON -DBUILD_ALL=OFF` to build only the module's operators.
+4. Add a `Dockerfile` extending the Holoscan SDK base image with module-specific
+   system dependencies.
+
+See `modules/holoscan-gstreamer/` for a complete reference example.
+
+### Dependency Resolution for In-Tree Modules
+
+The `holoscan-cli` resolver automatically
+recognizes in-tree modules: a dependency with no `source` block is looked up in
+`modules/<name>/metadata.json`. If found, the dep is marked `is_internal=True` and
+the CMake manifest emits a comment instead of a FetchContent_Declare — the operators
+are already present in HoloHub's tree and are built when `OP_<name>=ON`.
+
+## Naming Conventions
+
+The template derives four related names from a single human-readable input. Review
+this before running the command to avoid confusion during the prompts.
+
+### The three-tier system
+
+| Name | Format | Used for |
+| --- | --- | --- |
+| `project_name` | Free text, title case | Display name, README title |
+| `module_slug` | `snake_case` (underscores) | Python import path, C++ namespace, file/dir names inside the module, CMake variable prefixes |
+| `module_repo_name` | Derived: `holoscan-<slug>` (hyphens) | Repository directory name, PyPI package name, Debian package name |
+| `operator_slug` | `snake_case` + `_op` | Operator source file name; class name is TitleCase (`MySensorOp`) |
+
+### Example: "My Sensor"
+
+```text
+project_name     → "My Sensor"
+module_slug      → my_sensor           (underscores: used in Python/C++ code)
+module_repo_name → holoscan-my-sensor  (hyphens: used in package/repo names)
+operator_slug    → my_sensor_op        (class: MySensorOp)
+```
+
+### Why two formats?
+
+Python identifiers and C++ namespaces cannot contain hyphens, so `module_slug` uses
+underscores. Package registries (PyPI, apt) and repository directory names follow the
+opposite convention. The template enforces both so that
+`from holoscan.my_sensor import MySensorOp` and `pip install holoscan-my-sensor` both
+work without manual adjustment.
+
+### Transformation rules
+
+```text
+module_slug      = project_name.lower().replace(' ', '_').replace('-', '_')
+module_repo_name = "holoscan-" + module_slug.replace('_', '-')
+operator_slug    = module_slug + "_op"
+```
+
+The template computes `module_slug`, `module_repo_name`, and `operator_slug`
+automatically from `project_name`. `module_slug` and `operator_slug` can be
+customized at the prompts; keep `module_repo_name` at its derived value so the
+repository directory, package metadata, and generated build configuration remain
+aligned.
+
+### Supported namespace and package layout
+
+`module_slug` is the single supported customization point for generated code layout.
+It determines the C++ namespace `holoscan::<module_slug>`, the Python import
+`holoscan.<module_slug>`, and the corresponding generated Python-package directory.
+For example, `module_slug=my_sensor` produces `holoscan::my_sensor`,
+`holoscan.my_sensor`, and `python/holoscan/my_sensor/`.
+
+Independent C++ namespaces, Python package names, and package directories are not
+supported customization points. Keeping these names aligned preserves the generated
+bindings, CMake targets, installation layout, and consumer imports.

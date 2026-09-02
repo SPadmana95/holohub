@@ -17,8 +17,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: sudo ./holohub lint --install-dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install lint hook dependencies
+        run: |
+          ./holohub lint --install-dependencies
 
       - name: Run linter
         run: ./holohub lint

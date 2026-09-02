@@ -14,6 +14,7 @@ The client application inputs a video file and streams the video frames to the s
 From the diagram above, we can see that both the App Cloud (the server) and the App Edge (the client) are very similar to the standalone [Endoscopy Tool Tracking](../../../endoscopy_tool_tracking/) application. This section will only describe the differences; for details on inference and post-processing, please refer to the link above.
 
 On the client side, we provided two examples, one using a single fragment and another one using two fragments. When comparing the client side to the standalone [Endoscopy Tool Tracking](../../../endoscopy_tool_tracking/) application, the differences are the queues and the gRPC client. We added the following:
+
 - **Outgoing Requests** operator (`GrpcClientRequestOp`): It converts the video frames (GXF entities) received from the *Video Stream Replayer* operator into `EntityRequest` protobuf messages and queues each frame in the *Request Queue*.
 - **gRPC Service & Client** (`EntityClientService` & `EntityClient`): The gRPC Service is responsible for controlling the life cycle of the gRPC client. The client connects to the remote gRPC server and then sends the requests found in the *Request Queue*. When it receives a response, it converts it into a GXF entity and queues it in the *Response Queue*.
 - **Incoming Responses** operator (`GrpcClientResponseOp`): This operator is configured with an `AsynchronousCondition` condition to check the availability of the *Response Queue*. When notified of available responses in the queue, it dequeues each item and emits each to the output port.
@@ -67,7 +68,7 @@ application:
 > [!NOTE]
 > The Python version of this application is only available in single-fragment mode with benchmarking turned on.
 
-[Data Flow Tracking](https://docs.nvidia.com/holoscan/sdk-user-guide/flow_tracking.html) can also be enabled by editing the [endoscopy_tool_tracking.yaml](./cpp/endoscopy_tool_tracking.yaml) YAML file and changing `benchmarking` to `true`. This enables the built-in mechanism to profile the application and analyze the fine-grained timing properties and data flow between operators.
+[Data Flow Tracking](https://docs.nvidia.com/holoscan/sdk-user-guide/performance/flow-tracking) can also be enabled by editing the [endoscopy_tool_tracking.yaml](./cpp/endoscopy_tool_tracking.yaml) YAML file and changing `benchmarking` to `true`. This enables the built-in mechanism to profile the application and analyze the fine-grained timing properties and data flow between operators.
 
 For example, on the server side, when a client disconnects, it will output the results for that session:
 
@@ -122,44 +123,10 @@ incoming_responses->output: 683
 replayer->output: 683
 ```
 
-## Development Environment
-
-### Dev Container
-
-To start the Dev Container, run the following command from the root directory of Holohub:
-
-```bash
-./holohub vscode
-```
-
-### VS Code Launch Profiles
-
-#### C++
-
-The following launch profiles are available:
-
-- **(compound) grpc_endoscopy_tool_tracking/cpp (cloud & edge)**: Launch both the gRPC server and the client.
-- **(gdb) grpc_endoscopy_tool_tracking/cpp (cloud)**: Launch the gRPC server.
-- **(gdb) grpc_endoscopy_tool_tracking/cpp (edge)**: Launch the gRPC client.
-
-#### Python
-
-The following launch profiles are available:
-
-- **(compound) grpc_endoscopy_tool_tracking/python (cloud & edge)**: Launch both the gRPC server and the client.
-- **(pythoncpp) grpc_endoscopy_tool_tracking/python (cloud)**: Launch the gRPC server with `pythoncpp`.
-- **(pythoncpp) grpc_endoscopy_tool_tracking/python (edge)**: Launch the gRPC client with `pythoncpp`.
-- **(debugpy) grpc_endoscopy_tool_tracking/python (cloud)**: Launch the gRPC server with `debugpy`.
-- **(debugpy) grpc_endoscopy_tool_tracking/python (edge)**:Launch the gRPC client with `debugpy`.
-
-> [!NOTE]
-> The `compound` profile uses the `debugpy` extension due to a limitation that prevents launching
-> the cloud and the edge apps together using `pythoncpp`.
-
-
 ## Limitations & Known Issues
 
-### C++
+### C++ (limitations)
+
 1. Connection Timeout:
    - The connection between the server and client is controlled by `rpc_timeout`
    - Default timeout is 5 seconds, configurable in [endoscopy_tool_tracking.yaml](./cpp/endoscopy_tool_tracking.yaml)
@@ -169,31 +136,35 @@ The following launch profiles are available:
    - Can only serve one request at a time
    - Subsequent calls receive `grpc::StatusCode::RESOURCE_EXHAUSTED` status
 
-3. Debugging Issues:
-   - When using the compound profile, the server may need additional startup time
-   - If needed, adjust the sleep value in [tasks.json](../../../../.vscode/tasks.json) under `Build grpc_endoscopy_tool_tracking (delay 3s)`
-
-4. Expected Exit Behavior:
+3. Expected Exit Behavior:
    - The client will exit with the following expected error when the video completes:
+
      ```bash
      [error] [program.cpp:614] Event notification 2 for entity [video_in__outgoing_requests] with id [33] received in an unexpected state [Origin]
      ```
 
-### Python
+### Python (limitations)
+
 - The client may require manual termination (CTRL+C) if errors occur during execution
 
 ## Containerization
 
+> [!IMPORTANT]
+> These helpers require the application packager from `holoscan-cli` 4.2.0 or
+> earlier. Current `./holohub package` builds Holoscan Module artifacts instead.
+
 To containerize the application:
 
-1. Install [Holoscan CLI](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_packager.html)
+1. Install a compatible legacy [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-sdk/tree/main/examples/cli_packager)
 2. Build the application:
+
    ```bash
    ./holohub install grpc_endoscopy_tool_tracking
    ```
+
 3. Run the appropriate packaging script:
    - C++: [cpp/package-app.sh](./cpp/package-app.sh)
    - Python: [python/package-app.sh](./python/package-app.sh)
 4. Follow the generated output instructions to package and run the application
 
-For more information about packaging Holoscan applications, refer to the [Packaging Holoscan Applications](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_packager.html) section in the [Holoscan User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/).
+For more information about packaging Holoscan applications, refer to the [Packaging Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-sdk/tree/main/examples/cli_packager) section in the [Holoscan User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/getting-started).

@@ -1,4 +1,4 @@
-#SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #SPDX-License-Identifier: Apache-2.0
 
 #Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,10 +30,10 @@ tar -xvzf 'dnn_stereo_disparity_v4.1.0_onnx.tar.gz'
 arch=$(uname -m)
 if [ "$arch" == "x86_64" ]; then
     trtexec --onnx="dnn_stereo_disparity_v4.1.0_onnx/ess.onnx" --saveEngine="../../ess.engine" --plugins="dnn_stereo_disparity_v4.1.0_onnx/plugins/x86_64/ess_plugins.so" --fp16
-    cp "dnn_stereo_disparity_v4.1.0_onnx/plugins/x86_64/ess_plugins.so" "../../ess_plugins.so" 
+    cp "dnn_stereo_disparity_v4.1.0_onnx/plugins/x86_64/ess_plugins.so" "../../ess_plugins.so"
 elif [ "$arch" == "aarch64" ]; then
     trtexec --onnx="dnn_stereo_disparity_v4.1.0_onnx/ess.onnx" --saveEngine="../../ess.engine" --plugins="dnn_stereo_disparity_v4.1.0_onnx/plugins/aarch64/ess_plugins.so" --fp16
-    cp "dnn_stereo_disparity_v4.1.0_onnx/plugins/aarch64/ess_plugins.so" "../../ess_plugins.so" 
+    cp "dnn_stereo_disparity_v4.1.0_onnx/plugins/aarch64/ess_plugins.so" "../../ess_plugins.so"
 else
     echo "Error: Unknown architecture: $arch"
 fi

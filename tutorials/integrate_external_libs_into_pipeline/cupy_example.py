@@ -1,21 +1,21 @@
 """
- SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
- http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-"""  # noqa: E501
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
-import cupy as cp  # noqa
+import cupy as cp
 from holoscan.conditions import CountCondition
 from holoscan.core import Application, Operator, OperatorSpec, Tensor  # noqa
 from holoscan.operators import HolovizOp
@@ -150,7 +150,7 @@ class ProbeOp(Operator):
     def compute(self, op_input, op_output, context):
         value = op_input.receive("in")  # type: dict[str, holoscan.core.Tensor]
 
-        for key, tensor in value.items():
+        for tensor in value.values():
             if hasattr(tensor, "__cuda_array_interface__"):
                 array_interface = tensor.__cuda_array_interface__
                 # print("#tensor.__cuda_array_interface__", tensor.__cuda_array_interface__)
@@ -210,7 +210,7 @@ class TestCudaApp(Application):
             height=height,
             tensors=[
                 # `name=""` here to match the output of VideoStreamReplayerOp
-                dict(name="", type="color", opacity=1.0, priority=0),
+                {"name": "", "type": "color", "opacity": 1.0, "priority": 0},
             ],
         )
 

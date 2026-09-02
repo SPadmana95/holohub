@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@ def main():
         dates.append(filename.split("_")[-1].split(".")[0])
 
     # Generate bar plots with dates
-    fig, ax = plt.subplots(figsize=(9, 7.5))
+    _fig, ax = plt.subplots(figsize=(9, 7.5))
     ax.bar(dates, all_values, color="tab:blue", alpha=0.6)
     # Label the actual values just on top of the bars
     for i, v in enumerate(all_values):
@@ -67,11 +67,9 @@ def main():
     plt.tight_layout()
     # plt.show()
     plt.savefig(f"{current_metric_name}_{dates[-1]}.png")
-    print(
-        f'<CTestMeasurementFile type="image/png" \
+    print(f'<CTestMeasurementFile type="image/png" \
           name="{current_metric_name}">{current_metric_name}_{dates[-1]}.\
-          png</CTestMeasurementFile>'
-    )
+          png</CTestMeasurementFile>')
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,11 @@ RUN if ! python3 -m pip --version >/dev/null 2>&1; then \
         curl -sS https://bootstrap.pypa.io/get-pip.py | ${PYTHON_VERSION} \
     ; fi
 
+# Install the wrapper-pinned holoscan-cli; copying only the wrapper keeps
+# this layer cached until the pin changes.
+COPY --chmod=755 holohub /tmp/scripts/
+RUN /tmp/scripts/holohub env-info
+
 # --------------------------------------------------------------------------
 #
 # Use HoloHub CLI to set up common packages for developing with Holoscan SDK
@@ -67,11 +72,8 @@ RUN if ! python3 -m pip --version >/dev/null 2>&1; then \
 # --------------------------------------------------------------------------
 FROM holohub-cli-prerequisites AS holohub-cli
 
-RUN mkdir -p /tmp/scripts
-COPY holohub /tmp/scripts/
 RUN mkdir -p /tmp/scripts/utilities
 COPY utilities /tmp/scripts/utilities/
-RUN chmod +x /tmp/scripts/holohub
 RUN /tmp/scripts/holohub setup && rm -rf /var/lib/apt/lists/*
 
 # Enable autocomplete
@@ -135,6 +137,18 @@ RUN apt update \
     && apt install --no-install-recommends -y \
         openjdk-21-jre
 RUN echo 'export JREHOME=$(readlink /etc/alternatives/java | sed -e "s/\/bin\/java//")' >> /etc/bash.bashrc
+
+# --------------------------------------------------------------------------
+#
+# Set up packages for developing with AJA Capture Cards
+#
+# --------------------------------------------------------------------------
+FROM holohub-cli AS holohub-aja
+
+RUN apt update \
+    && apt install --no-install-recommends -y \
+        libudev-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------------------------------------------------
 #

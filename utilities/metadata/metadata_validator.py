@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +12,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import glob
 import json
 import os
 import re
 import sys
+from pathlib import Path
 
 import jsonschema
-from jsonschema import Draft4Validator
+from jsonschema import Draft202012Validator
 from referencing import Registry
-from referencing.jsonschema import DRAFT4
+from referencing.jsonschema import DRAFT202012
+
+try:
+    from utilities.metadata.utils import (
+        BASE_SCHEMA_PATH,
+        DEFAULT_INCLUDE_PATHS,
+        METADATA_DIRECTORY_CONFIG,
+        SCHEMA_DIR,
+        get_schema_path,
+        iter_metadata_paths,
+    )
+except ModuleNotFoundError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from utilities.metadata.utils import (
+        BASE_SCHEMA_PATH,
+        DEFAULT_INCLUDE_PATHS,
+        METADATA_DIRECTORY_CONFIG,
+        SCHEMA_DIR,
+        get_schema_path,
+        iter_metadata_paths,
+    )
 
 
 def extract_readme_title(readme_path):
@@ -87,9 +107,11 @@ def check_name_matches_readme(metadata_path, json_data):
     if found_terms:
         return (
             False,
-            f"The 'name' field in metadata.json (\"{name}\") contains "
-            f"\"{', '.join(found_terms)}\"."
-            f"The name should not include terms like {', '.join(forbidden_terms)}.",
+            (
+                f"The 'name' field in metadata.json (\"{name}\") contains "
+                f"\"{', '.join(found_terms)}\"."
+                f"The name should not include terms like {', '.join(forbidden_terms)}."
+            ),
         )
 
     # Get the title from README.md
@@ -116,20 +138,40 @@ def check_name_matches_readme(metadata_path, json_data):
     return True, "Name matches README.md title"
 
 
+KNOWN_ENVELOPES = (
+    "application",
+    "operator",
+    "tutorial",
+    "benchmark",
+    "gxf_extension",
+    "module",
+    "package",
+)
+
+
 def validate_json(json_data, directory):
-    BASE_SCHEMA = "utilities/metadata/project.schema.json"
-
-    # Describe the schema.
-    with open(BASE_SCHEMA) as file:
+    with open(BASE_SCHEMA_PATH) as file:
         base_schema = json.load(file)
-    registry = Registry().with_resource(base_schema["$id"], DRAFT4.create_resource(base_schema))
+    registry = Registry().with_resource(
+        base_schema["$id"], DRAFT202012.create_resource(base_schema)
+    )
 
-    with open(directory + "/metadata.schema.json", "r") as file:
+    # Pick the schema by envelope key when present (e.g. an operator metadata.json
+    # nested under applications/ uses operator.schema.json, not the schema of its
+    # containing directory). Fall back to directory-based lookup otherwise.
+    schema_path = None
+    if isinstance(json_data, dict):
+        envelopes = [k for k in KNOWN_ENVELOPES if k in json_data]
+        if len(envelopes) == 1:
+            schema_path = SCHEMA_DIR / f"{envelopes[0]}.schema.json"
+    if schema_path is None:
+        schema_path = get_schema_path(directory)
+    with open(schema_path, "r") as file:
         try:
             execute_api_schema = json.load(file)
         except json.decoder.JSONDecodeError as err:
             return False, err
-    validator = Draft4Validator(execute_api_schema, registry=registry)
+    validator = Draft202012Validator(execute_api_schema, registry=registry)
 
     try:
         validator.validate(json_data)
@@ -139,44 +181,34 @@ def validate_json(json_data, directory):
     return True, "valid"
 
 
-def validate_json_directory(directory, ignore_patterns=[], metadata_is_required: bool = True):
+def validate_json_directory(directory, ignore_patterns=None, metadata_is_required: bool = True):
+    if ignore_patterns is None:
+        ignore_patterns = []
     exit_code = 0
     # Convert json to python object.
-    current_wdir = os.getcwd()
+    base_path = Path(os.getcwd()) / directory
+    ignore_patterns = ignore_patterns or []
 
+    metadata_entries = list(iter_metadata_paths([base_path], exclude_patterns=ignore_patterns))
+    metadata_subdirs = {
+        Path(file_path).relative_to(base_path).parts[0]
+        for file_path in metadata_entries
+        if Path(file_path).relative_to(base_path).parts
+    }
     # Check if there is a metadata.json
-    subdirs = next(os.walk(current_wdir + "/" + directory))[1]
+    subdirs = next(os.walk(base_path), (None, [], None))[1]
     for subdir in subdirs:
-        ignore = False
-        # check if we should ignore the pattern
-        for ignore_pattern in ignore_patterns:
-            if ignore_pattern in subdir:
-                ignore = True
-
-        if ignore is False:
-            count = len(
-                glob.glob(
-                    current_wdir + "/" + directory + "/" + subdir + "/**/metadata.json",
-                    recursive=True,
-                )
-            )
-            if count == 0:
-                if metadata_is_required:
-                    print("ERROR:" + subdir + " does not contain metadata.json file")
-                    exit_code = 1
-                else:
-                    print("WARNING:" + subdir + " does not contain metadata.json file")
+        if any(pattern in subdir for pattern in ignore_patterns):
+            continue
+        if subdir not in metadata_subdirs:
+            if metadata_is_required:
+                print("ERROR:" + subdir + " does not contain metadata.json file")
+                exit_code = 1
+            else:
+                print("WARNING:" + subdir + " does not contain metadata.json file")
 
     # Check if the metadata is valid
-    for name in glob.glob(current_wdir + "/" + directory + "/**/metadata.json", recursive=True):
-        ignore = False
-        # check if we should ignore the pattern
-        for ignore_pattern in ignore_patterns:
-            if ignore_pattern in name:
-                ignore = True
-        if ignore:
-            continue
-
+    for name in metadata_entries:
         with open(name, "r") as file:
             try:
                 jsonData = json.load(file)
@@ -204,24 +236,14 @@ def validate_json_directory(directory, ignore_patterns=[], metadata_is_required:
 
 # Validate the directories
 if __name__ == "__main__":
-    exit_code_op = validate_json_directory("operators", ignore_patterns=["template"])
-    exit_code_extensions = validate_json_directory("gxf_extensions", ignore_patterns=["utils"])
-    exit_code_applications = validate_json_directory("applications", ignore_patterns=["template"])
-    exit_code_workflows = validate_json_directory("workflows", ignore_patterns=["template"])
-    exit_code_tutorials = validate_json_directory(
-        "tutorials", ignore_patterns=["template"], metadata_is_required=False
-    )
-    exit_code_benchmarks = validate_json_directory("benchmarks")
-    exit_code_packages = validate_json_directory("pkg", metadata_is_required=False)
-
-    sys.exit(
-        max(
-            exit_code_op,
-            exit_code_extensions,
-            exit_code_applications,
-            exit_code_workflows,
-            exit_code_tutorials,
-            exit_code_benchmarks,
-            exit_code_packages,
+    exit_codes = []
+    for directory in DEFAULT_INCLUDE_PATHS:
+        config = METADATA_DIRECTORY_CONFIG.get(directory, {})
+        code = validate_json_directory(
+            directory,
+            ignore_patterns=config.get("ignore_patterns", []),
+            metadata_is_required=config.get("metadata_is_required", True),
         )
-    )
+        exit_codes.append(code)
+
+    sys.exit(max(exit_codes) if exit_codes else 0)

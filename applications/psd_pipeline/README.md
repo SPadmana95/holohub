@@ -1,14 +1,20 @@
 <!--
-SPDX-FileCopyrightText: 2024 Valley Tech Systems, Inc.
+SPDX-FileCopyrightText: 2024-2026 Voyager Technologies, Inc.
 
 SPDX-License-Identifier: Apache-2.0
 -->
 # VITA 49 Power Spectral Density (PSD)
 
+> [!NOTE]
+> **DAQIRI migration (June 26, 2026):** HoloHub networking examples, which
+> previously utilized the Basic or Advanced Networking Operators, have been
+> migrated to the standalone networking library,
+> [DAQIRI](https://github.com/NVIDIA/daqiri).
+
 ## Overview
 
-The VITA 49 Power Spectral Density (PSD) application takes in a VITA49 data stream from the advanced network
-operator, then performs an FFT, PSD, and averaging operation before
+The VITA 49 Power Spectral Density (PSD) application takes in a VITA49 data stream from
+DAQIRI, then performs an FFT, PSD, and averaging operation before
 generating a VITA 49.2 spectral data packet which gets sent to a
 destination UDP socket.
 
@@ -23,7 +29,7 @@ destination UDP socket.
 | NIC     | Network Interface Card                                             |
 | PSD     | Power Spectral Display                                             |
 | VITA 49 | Standard for interoperability between RF (radio frequency) devices |
-| VRT     | VITA Radio Tansport (transport-layer protocol)                     |
+| VRT     | VITA Radio Transport (transport-layer protocol)                    |
 
 ## Requirements
 
@@ -39,8 +45,8 @@ destination UDP socket.
 Each operator in the pipeline has its own configuration section. The specific options
 and their meaning are defined in each operator's own README:
 
-1. [`advanced_network`](../../operators/advanced_network/README.md)
-2. [`vita_connector`](./advanced_network_connectors/README.md)
+1. [`daqiri`](https://github.com/NVIDIA/daqiri)
+2. [`vita_connector`](./daqiri_connectors/README.md)
 3. [`fft`](../../operators/fft/README.md)
 4. [`high_rate_psd`](../../operators/high_rate_psd/README.md)
 5. [`low_rate_psd`](../../operators/low_rate_psd/README.md)
@@ -62,9 +68,9 @@ to construct VITA 49 context packets to send alongside the spectral data.
 
 ### Memory Layout
 
-The ANO operates using memory regions that it directs data to. Since VITA49
+DAQIRI operates using memory regions that it directs data to. Since VITA49
 is somewhat unusual in that signal data packets and context packets arrive
-at the same IP/port, we want to use the ANO's packet length steering feature
+at the same IP/port, we want to use DAQIRI's packet length steering feature
 to drop packets in the appropriate memory region.
 
 First, we want to define our memory regions:
@@ -84,7 +90,7 @@ First, we want to define our memory regions:
    - We need the whole packet in the CPU to fill out our metadata
      map for downstream processing/packet assembly.
 
-When an individual packet comes in, the ANO will try to match it
+When an individual packet comes in, DAQIRI will try to match it
 against the defined flows. So, for our data packets, we want to
 define a queue like this:
 
@@ -126,7 +132,7 @@ and `Data_RX_GPU` has `buf_size: 4100` (the remaining size of the data
 packet). These numbers may be different depending on the packet size of
 your radio!
 
-`batch_size: 12500` tells the ANO to batch up 12,500 packets before sending
+`batch_size: 12500` tells DAQIRI to batch up 12,500 packets before sending
 the data to downstream operators. In our case, 12,500 packets represents
 100ms worth of data and that's how much we want to process on each run of
 the pipeline.
@@ -147,7 +153,6 @@ The connector operator also makes the following assumptions:
 4. The `batch_size` of the context queue is equal to the number of
    channels.
 
-
 ### Ingest NIC
 
 The PCIe address of your ingest NIC needs to be specified in `config.yaml`.
@@ -160,7 +165,7 @@ The PCIe address of your ingest NIC needs to be specified in `config.yaml`.
 
 You can find the addresses of your devices with: `lshw -c network -businfo`:
 
-```
+```text
 # lshw -c network -businfo
 Bus info          Device     Class          Description
 =======================================================
@@ -175,25 +180,32 @@ In this example, if you wanted to use the `ens3f1np1` interface, you'd pass
 `0000:51:00.1`.
 
 ## Build & Run
-1. **Build** the development container in two steps:
-   ```bash
-   # Build the ANO dev container
-   ./holohub build-container advanced_network --docker-file ./operators/advanced_network/Dockerfile
 
-   # Add the psd-pipeline deps
-   ./holohub build-container psd_pipeline --base-img holohub:ngc-v3.1.0-dgpu --img holohub-psd-pipeline:ngc-v3.1.0-dgpu
-   ```
-2. **Launch** the development container with the command:
+1. **Build** the development container:
+
    ```bash
-   ./holohub run-container psd_pipeline --no-docker-build --docker-opts="-u root --privileged" --img holohub-psd-pipeline:ngc-v3.1.0-dgpu
+   ./holohub build-container psd_pipeline
+   ```
+
+   The networking Dockerfile (`pkg/holoscan-networking/Dockerfile`) is selected
+   automatically from this application's `metadata.json`.
+
+2. **Launch** the development container with the command:
+
+   ```bash
+   ./holohub run-container psd_pipeline --no-docker-build --docker-opts="-u root --privileged"
    ```
 
 Once you are in the dev container:
+
 1. **Build** the application using:
+
     ```bash
     ./holohub build psd_pipeline
     ```
+
 2. **Run** the application using:
+
     ```bash
     ./holohub run psd_pipeline --local --no-local-build --run-args="config.yaml"
     ```

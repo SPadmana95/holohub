@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ def render_training_image(
             end = "min"
         else:
             end = "mins"
-        label2 = "time:%.2f" % times + end
+        label2 = f"time:{times:.2f}" + end
         image = render_pkg["render"]
         depth = render_pkg["depth"]
         image_np = image.permute(1, 2, 0).cpu().numpy()  # Convert channel order to (H, W, 3)

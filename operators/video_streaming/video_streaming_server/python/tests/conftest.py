@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,8 @@ Pytest fixtures for StreamingServer operators Python binding tests.
 import os
 import sys
 
-import cupy as cp
 import numpy as np
 import pytest
-from holoscan.core import Application, Fragment
 
 
 @pytest.fixture(scope="session")
@@ -135,22 +133,38 @@ def downstream_operator_factory(streaming_server_classes, fragment):
 @pytest.fixture
 def app():
     """Provide a Holoscan Application instance."""
-    return Application()
+    return pytest.importorskip("holoscan.core").Application()
 
 
 @pytest.fixture
 def fragment():
     """Provide a Holoscan Fragment instance."""
-    return Fragment()
+    return pytest.importorskip("holoscan.core").Fragment()
 
 
 @pytest.fixture
 def mock_image():
     """Factory fixture for creating mock image tensors."""
 
-    def _factory(shape, dtype=cp.uint8, backend="cupy", seed=None):
+    def _factory(shape, dtype="uint8", backend="cupy", seed=None):
         if backend == "cupy":
-            xp = cp
+            try:
+                # CuPy can be installed yet unimportable (no GPU/driver, ABI
+                # mismatch), so skip on any import failure, not just ImportError.
+                import cupy as xp
+            except (
+                ArithmeticError,
+                AssertionError,
+                AttributeError,
+                EOFError,
+                ImportError,
+                LookupError,
+                OSError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                pytest.skip(f"CuPy is unavailable in this test environment: {exc}")
         elif backend == "numpy":
             xp = np
         else:
@@ -212,4 +226,4 @@ def op_output():
 @pytest.fixture
 def execution_context():
     """Provide a mock execution context (None for Python bindings)."""
-    return None
+    return

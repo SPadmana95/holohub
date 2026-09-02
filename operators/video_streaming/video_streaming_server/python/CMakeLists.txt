@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,7 @@ pybind11_add_holohub_module(
 )
 
 # Custom __init__.py with all three classes explicitly listed
-set(INIT_PY_CONTENT "# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+set(INIT_PY_CONTENT "# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import holoscan.core
@@ -42,7 +42,7 @@ except ImportError as e:
 - Holoscan SDK >= 3.3.0: make sure to link your bindings against 'holoscan::pybind11'.
 - Holoscan SDK < 3.3.0: use the same compiler version as your installation of the Holoscan SDK.
 
-See https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_create_operator_python_bindings.html#pybind11-abi-compatibility for details.
+See https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/python-operator-bindings#pybind11-abi-compatibility for details.
 \"\"\"
     if hasattr(e, \"add_note\"):
         e.add_note(note)

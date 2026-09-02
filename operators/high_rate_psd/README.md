@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2024 Valley Tech Systems, Inc.
+SPDX-FileCopyrightText: 2024-2026 Voyager Technologies, Inc.
 
 SPDX-License-Identifier: Apache-2.0
 -->
@@ -13,6 +13,7 @@ executor.
 ## Description
 
 The high rate PSD operator...
+
 - takes in a tensor of complex float data,
 - performs a squared absolute value operation on the tensor: real(t)^2 + imag(t)^2,
 - divides by the number of input elements
@@ -29,7 +30,7 @@ For an example of how to use this operator, see the
 
 ## Multiple Channels
 
-The zero-indexed `channel_number` key will be looked up in [`metadata()`](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_create_app.html#dynamic-application-metadata)
+The zero-indexed `channel_number` key will be looked up in [`metadata()`](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/create-an-application#dynamic-application-metadata)
 on each `compute()` run. If no value is found, the default channel number is `0`.
 
 ## Configuration

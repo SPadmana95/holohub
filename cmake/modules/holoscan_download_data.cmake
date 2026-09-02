@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,15 +22,19 @@ function(holoscan_download_data dataname)
   endif()
 
   cmake_parse_arguments(DATA "GENERATE_GXF_ENTITIES;ALL;MODEL"
-                             "URL;URL_MD5;DOWNLOAD_DIR;GXF_ENTITIES_WIDTH;GXF_ENTITIES_HEIGHT;GXF_ENTITIES_CHANNELS;GXF_ENTITIES_FRAMERATE"
+                             "URL;URL_MD5;DOWNLOAD_DIR;DOWNLOAD_NAME;GXF_ENTITIES_WIDTH;GXF_ENTITIES_HEIGHT;GXF_ENTITIES_CHANNELS;GXF_ENTITIES_FRAMERATE"
                              "" ${ARGN})
 
   if(NOT DATA_URL)
-    message(FATAL "No URL set for holoscan_download_data. Please set the URL.")
+    message(FATAL_ERROR "No URL set for holoscan_download_data. Please set the URL.")
   endif()
 
   if(NOT DATA_DOWNLOAD_DIR)
-    message(FATAL "No DOWNLOAD_DIR set for holoscan_download_data. Please set the DOWNLOAD_DIR.")
+    message(FATAL_ERROR "No DOWNLOAD_DIR set for holoscan_download_data. Please set the DOWNLOAD_DIR.")
+  endif()
+
+  if(NOT DATA_DOWNLOAD_NAME)
+    set(DATA_DOWNLOAD_NAME ${dataname})
   endif()
 
   if(DATA_URL_MD5)
@@ -61,15 +65,27 @@ function(holoscan_download_data dataname)
     list(APPEND extra_data_options --model)
   endif()
 
+  find_program(DOWNLOAD_NGC_DATA
+    NAMES download_ngc_data
+    PATHS
+      ${CMAKE_SOURCE_DIR}/utilities
+      /opt/nvidia/holoscan
+      /opt/nvidia/holoscan/bin
+    NO_DEFAULT_PATH
+    REQUIRED
+  )
+  cmake_path(GET DOWNLOAD_NGC_DATA PARENT_PATH DOWNLOAD_NGC_DATA_WORKDIR)
+
   # Using a custom_command attached to a custom target allows to run only the custom command
   # if the stamp is not generated
-  add_custom_command(OUTPUT "${DATA_DOWNLOAD_DIR}/${dataname}/${dataname}.stamp"
-     COMMAND ${CMAKE_SOURCE_DIR}/utilities/download_ngc_data
+  add_custom_command(OUTPUT "${DATA_DOWNLOAD_DIR}/${dataname}/${DATA_DOWNLOAD_NAME}.stamp"
+     COMMAND ${DOWNLOAD_NGC_DATA}
      --url ${DATA_URL}
+     --dataset_name ${dataname}
      --download_dir ${DATA_DOWNLOAD_DIR}
-     --download_name ${dataname}
+     --download_name ${DATA_DOWNLOAD_NAME}
      ${extra_data_options}
-     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/utilities"
+     WORKING_DIRECTORY "${DOWNLOAD_NGC_DATA_WORKDIR}"
   )
 
   # If the target should be run all the time
@@ -78,7 +94,7 @@ function(holoscan_download_data dataname)
     set(ALL "ALL")
   endif()
 
-  add_custom_target("${dataname}_data" ${ALL} DEPENDS "${DATA_DOWNLOAD_DIR}/${dataname}/${dataname}.stamp")
+  add_custom_target("${dataname}_data" ${ALL} DEPENDS "${DATA_DOWNLOAD_DIR}/${dataname}/${DATA_DOWNLOAD_NAME}.stamp")
 
 endfunction()
 

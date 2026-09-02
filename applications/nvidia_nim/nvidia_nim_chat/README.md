@@ -2,7 +2,7 @@
 
 This is a sample application that shows how to use the OpenAI SDK with NVIDIA Inference Microservice (NIM). Whether you are using a NIM from [build.nvidia.com/](https://build.nvidia.com/) or a self-hosted NIM, this sample application will work for both.
 
-### Quick Start
+## Quick Start
 
 1. Add API key in `nvidia_nim.yaml`
 2. `./holohub run nvidia_nim_chat`
@@ -13,11 +13,10 @@ Use the `nvidia_nim.yaml` configuration file to configure the sample application
 
 ### Connection Information
 
-```
+```yaml
 nim:
   base_url: https://integrate.api.nvidia.com/v1
   api_key:
-
 ```
 
 `base_url`: The URL of your NIM instance. Defaults to NVIDIA hosted NIMs.
@@ -39,7 +38,7 @@ To run the sample application with Docker, you must first build and run a Docker
 
 ```bash
 # Build and run the Docker images from the root directory of Holohub
-./holohub run-container nvidia_nim
+./holohub run-container nvidia_nim_chat
 ```
 
 Continue to the [Start the Application](#start-the-application) section once inside the Docker container.
@@ -54,7 +53,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # install the required packages
-pip install -r applications/nvidia_nim/chat/requirements.txt
+pip install -r applications/nvidia_nim/nvidia_nim_chat/requirements.txt
 ```
 
 ### Start the Application

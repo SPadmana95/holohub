@@ -2,7 +2,7 @@
 
 In this application, we show how to build a Multi AI application with detection and segmentation models, write postprocessing operators using CuPy and NumPy in Python tensor interop and [MatX library (An efficient C++17 GPU numerical computing library with Python-like syntax)](https://github.com/NVIDIA/MatX) in C++ tensor interop, and pass multiple tensors from postprocessing to Holoviz.
 
-![app_multiai_endoscopy](images/app_multiai_endoscopy.png)  
+![app_multiai_endoscopy](images/app_multiai_endoscopy.png)
 Fig. 1 Endoscopy (laparoscopy) image from a cholecystectomy (gallbladder removal surgery) showing tool detection and segmentation results from two concurrently executed AI models.
 Image courtesy of Research Group Camma, IHU Strasbourg and the University of Strasbourg ([NGC Resource](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/clara-holoscan/resources/holoscan_endoscopy_sample_data))
 
@@ -24,7 +24,7 @@ We combine two models from the single model applications [SSD Tool Detection](ht
 
 ## Requirements
 
-Ensure you have installed the Holoscan SDK via one of the methods specified in [the SDK user guide](https://docs.nvidia.com/holoscan/sdk-user-guide/sdk_installation.html#development-software-stack).
+Ensure you have installed the Holoscan SDK via one of the methods specified in [the SDK user guide](https://docs.nvidia.com/holoscan/sdk-user-guide/setup/sdk-installation#development-software-stack).
 
 The directory specified by `--data` at app runtime is assumed to contain three subdirectories, corresponding to the three NGC resources specified in [Model](#model) and [Data](#data): `endoscopy`, `monai_tool_seg_model` and `ssd_model`.  These resources will be automatically downloaded to the holohub data directory when building the application.
 

@@ -12,7 +12,7 @@ This application performs monitor registration using an [Emergent Vision Technol
 
 ## Setup Instructions
 
-1. Follow the [Holoscan SDK user guide](https://docs.nvidia.com/holoscan/sdk-user-guide/emergent_setup.html) to set up the EVT camera
+1. Follow the [Emergent Vision Technologies setup guide](../../../operators/emergent_source/setup.md) to set up the EVT camera
 2. Place the calibration image with April tags on the monitor
 3. Position the camera so it can see all four corners of the monitor
 4. Verify camera visibility using the high_speed_endoscopy app
@@ -21,7 +21,7 @@ This application performs monitor registration using an [Emergent Vision Technol
 
 ```bash
 ./holohub build evt_cam_calibration --local
-./holohub run evt_cam_calibration --local --no-local-build
+./holohub run evt_cam_calibration --local --no-local-build --as-root
 ```
 
 ## Output
@@ -33,4 +33,4 @@ The application generates a calibration file `evt-cali.npy` in the build directo
 - The camera must have a clear view of all four April tags
 - Avoid backlighting or glare on the monitor
 - If using a different camera model, update the camera settings in the Python app or YAML configuration file
-- The application requires sudo privileges to run
+- The application requires root; run it with `--as-root`

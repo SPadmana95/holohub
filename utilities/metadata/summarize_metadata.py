@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@ import semver
 from gather_metadata import gather_metadata
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 DEFAULT_DETAIL_COLUMNS = [
     "name",
@@ -44,7 +44,6 @@ class ProjectType(Enum):
     APPLICATION = 0
     GXF_EXTENSION = 1
     OPERATOR = 2
-    WORKFLOW = 3
 
 
 @dataclass
@@ -57,7 +56,7 @@ class ProjectTypeData:
 
     @property
     def schema_filepath(self) -> str:
-        return f"{self.folder_name}/metadata.schema.json"
+        return f"utilities/metadata/{self.schema_name}.schema.json"
 
     @property
     def schema(self) -> dict:
@@ -71,13 +70,12 @@ project_type_data = [
     ProjectTypeData(ProjectType.APPLICATION, "applications", "application"),
     ProjectTypeData(ProjectType.GXF_EXTENSION, "gxf_extensions", "gxf_extension"),
     ProjectTypeData(ProjectType.OPERATOR, "operators", "operator"),
-    ProjectTypeData(ProjectType.WORKFLOW, "workflows", "workflow"),
 ]
 
 
 def collect_metadata() -> pd.DataFrame:
     """Gather HoloHub project metadata into a DataFrame"""
-    METADATA_DIRECTORIES = ["applications", "workflows", "gxf_extensions", "operators"]
+    METADATA_DIRECTORIES = ["applications", "gxf_extensions", "operators"]
 
     # Ingest project metadata files
     metadata = gather_metadata(METADATA_DIRECTORIES)

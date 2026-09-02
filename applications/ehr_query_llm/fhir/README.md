@@ -19,7 +19,7 @@ The default set of FHIR resource types to retrieve are listed below, which can b
 
 ## Requirements
 
-- On a [Holohub supported platform](../../README.md#supported-platforms)
+- On a [HoloHub supported platform](../../../README.md#supported-platforms)
 - Python 3.10+
 - Python packages from [PyPI](https://pypi.org), including holoscan, fhir.resources, pyzmq, requests and their dependencies
 
@@ -29,14 +29,14 @@ There are several ways to build and run this application and package it as a Hol
 
 It is further expected that you have read the [HoloHub README](../../../README.md), have cloned the HoloHub repository to your local system, and the current working directory is the HoloHub root, `holohub`.
 
-**_Note_**:  
+**_Note_**:
 The application listens for request messages to start retrieving resources from the server and then publishes the results, so another application is needed to drive this workflow (e.g., the LLM application). To help with simple testing, a Python script is provided as part of this application, and its usage is described below in this [section](#test-the-running-application).
 
 ### Quick Start Using Holohub Container
 
 This is the simplest and fastest way to start the application in a Holohub dev container and get it ready to listen to request messages.
 
-**_Note_**:  
+**_Note_**:
 Please use your own FHIR server endpoint, as well as the OAuth2.0 authorization endpoint and client credentials as needed.
 
 ```bash
@@ -117,7 +117,11 @@ From the menu, pick one of the choices for the resources of interest.
 
 ## Packaging the Application for Distribution and Deployment
 
-With Holoscan CLI, applications built with Holoscan SDK can be packaged into a Holoscan Application Package (HAP), which is an [Open Container Initiative](https://opencontainers.org/) compliant image. An HAP is well suited to be distributed for deployment on hosting platforms, be it Docker Compose, Kubernetes, or otherwise. Please refer to [Packaging Holoscan Applications](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_packager.html) in the User Guide for more information.
+> [!IMPORTANT]
+> This helper requires the application packager from `holoscan-cli` 4.2.0 or
+> earlier. Current `./holohub package` builds Holoscan Module artifacts instead.
+
+With a compatible legacy Holoscan CLI, applications built with Holoscan SDK can be packaged into a Holoscan Application Package (HAP), which is an [Open Container Initiative](https://opencontainers.org/) compliant image. An HAP is well suited to be distributed for deployment on hosting platforms, be it Docker Compose, Kubernetes, or otherwise. Please refer to [Packaging Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-sdk/tree/874dc9deb8cb92fd1f12691695abdef9d85888d4/examples/cli_packager) for more information.
 
 This example application provides all the necessary contents for HAP packaging. It is required to perform the packaging in a Python virtual environment, with the application's dependencies installed, before running the following script to reveal specific packaging commands.
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,6 +141,11 @@ foreach(METADATA_FILE ${METADATA_FILES})
   else()
     # Add language flag
     set(TEST_COMMAND ${HOLOHUB_ROOT}/holohub ${HOLOHUB_COMMAND} ${APP_NAME} --language ${LANGUAGE})
+  endif()
+
+  # When building only, disable BUILD_TESTING to skip test targets
+  if(BUILD_ONLY)
+    list(APPEND TEST_COMMAND --configure-args=-DBUILD_TESTING=OFF)
   endif()
 
   # Add test for the application

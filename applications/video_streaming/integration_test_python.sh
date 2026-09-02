@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # Python Integration Test for Video Streaming Demo
-# 
+#
 # IMPORTANT: This test runs in Docker and builds from committed source code.
 # If you have local Python/C++ changes, make sure they are committed before running this test.
 
@@ -33,7 +33,7 @@ docker system prune -f --filter "label=holohub" 2>/dev/null || true
 # Build and test using Docker with Python support (this will use your committed fixes)
 echo "Running Python integration test with Docker (using committed fixes)..."
 # Set SDK version via environment variable to match base image version
-export HOLOHUB_BASE_SDK_VERSION=3.6.0
+export HOLOSCAN_CLI_BASE_SDK_VERSION=3.6.0
 ./holohub test video_streaming \
     --base-img=nvcr.io/nvidia/clara-holoscan/holoscan:v3.6.0-dgpu \
     --cmake-options="-DBUILD_TESTING=ON -DHOLOHUB_BUILD_PYTHON=ON" \
@@ -80,7 +80,7 @@ else
             SERVER_SUCCESS=0
         fi
         if grep -qE "Python client.*failed|client_python.log" applications/video_streaming/integration_test_python.log; then
-            echo "✗ Python client test failed" 
+            echo "✗ Python client test failed"
             CLIENT_SUCCESS=0
         fi
     else
@@ -109,4 +109,3 @@ else
     echo "✗ Python Integration test FAILED"
     exit 1
 fi
-

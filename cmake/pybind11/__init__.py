@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ try:
 except ImportError as e:
     pybind11_hsdk_err = 'unknown base type "holoscan::'
 
-    if not pybind11_hsdk_err in str(e):
+    if pybind11_hsdk_err not in str(e):
         # Unknown import error, raise it
         raise e
 
@@ -33,7 +33,7 @@ except ImportError as e:
 - Holoscan SDK >= 3.3.0: make sure to link your bindings against 'holoscan::pybind11'.
 - Holoscan SDK < 3.3.0: use the same compiler version as your installation of the Holoscan SDK.
 
-See https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_create_operator_python_bindings.html#pybind11-abi-compatibility for details.
+See https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/python-operator-bindings#pybind11-abi-compatibility for details.
 """
 
     # Raise with note if available (Python 3.11+) ...

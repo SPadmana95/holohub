@@ -5,10 +5,11 @@ install/
 install-*/
 dist/
 _CPack_Packages/
+doc/website/_build/
 
 # Data
-data/
-data-*/
+/data/
+/data-*/
 
 # Utilities and metadata
 aggregate_metadata.json
@@ -29,13 +30,22 @@ ci/
 *.tar.xz
 *.tar.bz2
 *.tar.7z
+*.pt
+*.pth
 
 # Development environment
 .venv/
+.venv_lint/
 .vscode-server/
+.vscode/
 ngc-cli/
 CTestConfig.cmake
 .ngc
+.npm
+
+# AI coding assistants
+.cursor/
+CLAUDE.md
 
 # Cache and temporary directories
 .cache/
@@ -56,6 +66,9 @@ tmp/
 .viminfo
 .lesshst
 
+# Secrets
+.erlang.cookie
+
 # Licenses
 rti_license.dat
 
@@ -65,3 +78,6 @@ rti_license.dat
 
 # CLI update check
 .cli_commit_hash
+
+# Streamlit web GUI
+.streamlit/

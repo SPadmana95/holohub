@@ -1,0 +1,254 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+cmake_minimum_required(VERSION 3.20)
+project(holoscan_gstreamer_bridge)
+
+# Must precede target declaration so CMAKE_INSTALL_INCLUDEDIR is available for
+# the INSTALL_INTERFACE generator expression in target_include_directories().
+include(GNUInstallDirs)
+
+# Find required packages
+find_package(PkgConfig REQUIRED)
+
+# Find Holoscan
+find_package(holoscan REQUIRED CONFIG
+             PATHS "/opt/nvidia/holoscan" "/workspace/holoscan-sdk/install")
+
+# Find GStreamer
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+pkg_check_modules(GSTREAMER_BASE REQUIRED gstreamer-base-1.0)
+pkg_check_modules(GSTREAMER_VIDEO REQUIRED gstreamer-video-1.0)
+pkg_check_modules(GSTREAMER_CUDA gstreamer-cuda-1.0)  # Optional - only available in GStreamer 1.24+
+pkg_check_modules(GSTREAMER_APP REQUIRED gstreamer-app-1.0)
+
+# Create the Holoscan GStreamer Bridge library
+add_library(holoscan_gstreamer_bridge SHARED
+  gst/buffer.cpp
+  gst/caps.cpp
+  gst/memory.cpp
+  gst/message.cpp
+  gst/sample.cpp
+  gst/video_info.cpp
+  gst_sink_bridge.cpp
+  gst_sink_op.cpp
+  gst_sink_resource.cpp
+  gst_src_bridge.cpp
+  gst_src_op.cpp
+  gst_src_resource.cpp
+  gst_video_recorder_op.cpp
+  gst_pipeline_bus_monitor.cpp
+)
+
+# Create alias for consistent naming
+add_library(holoscan::ops::gstreamer_bridge ALIAS holoscan_gstreamer_bridge)
+
+# Set target properties
+set_target_properties(holoscan_gstreamer_bridge PROPERTIES
+  C_STANDARD 99
+  C_STANDARD_REQUIRED ON
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED ON
+  POSITION_INDEPENDENT_CODE ON
+)
+
+# Set include directories (PUBLIC so they propagate to applications)
+target_include_directories(holoscan_gstreamer_bridge
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/holoscan/operators/gstreamer>
+    ${GSTREAMER_INCLUDE_DIRS}
+    ${GSTREAMER_BASE_INCLUDE_DIRS}
+    ${GSTREAMER_VIDEO_INCLUDE_DIRS}
+    ${GSTREAMER_APP_INCLUDE_DIRS}
+)
+
+# Link libraries for custom sink
+target_link_libraries(holoscan_gstreamer_bridge
+    PUBLIC
+    ${GSTREAMER_LIBRARIES}
+    ${GSTREAMER_BASE_LIBRARIES}
+    ${GSTREAMER_VIDEO_LIBRARIES}
+    ${GSTREAMER_APP_LIBRARIES}
+    holoscan::core)
+
+# Set compile flags (PRIVATE since they're compiler-specific)
+target_compile_options(holoscan_gstreamer_bridge PRIVATE
+    ${GSTREAMER_CFLAGS_OTHER}
+    ${GSTREAMER_BASE_CFLAGS_OTHER}
+    ${GSTREAMER_VIDEO_CFLAGS_OTHER}
+    ${GSTREAMER_APP_CFLAGS_OTHER})
+
+# Configure CUDA support (optional - requires GStreamer 1.24+)
+if(GSTREAMER_CUDA_FOUND)
+    message(STATUS "GStreamer CUDA support: ENABLED (found gstreamer-cuda-1.0)")
+
+    # Add CUDA include directories
+    target_include_directories(holoscan_gstreamer_bridge
+        PUBLIC
+        ${GSTREAMER_CUDA_INCLUDE_DIRS}
+    )
+
+    # Add CUDA libraries
+    target_link_libraries(holoscan_gstreamer_bridge
+        PUBLIC
+        ${GSTREAMER_CUDA_LIBRARIES}
+    )
+
+    # Add CUDA compile flags
+    target_compile_options(holoscan_gstreamer_bridge PRIVATE
+        ${GSTREAMER_CUDA_CFLAGS_OTHER}
+    )
+
+    # Suppress unstable API warnings for CUDA
+    target_compile_definitions(holoscan_gstreamer_bridge PRIVATE
+        GST_USE_UNSTABLE_API
+    )
+else()
+    message(STATUS "GStreamer CUDA support: DISABLED (gstreamer-cuda-1.0 not found - requires GStreamer 1.24+)")
+endif()
+
+# Python bindings for GstVideoRecorderOp
+if(HOLOHUB_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
+
+# Install library
+install(TARGETS holoscan_gstreamer_bridge
+    EXPORT holoscan-gstreamer-targets
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    COMPONENT gstreamer
+)
+# Write the holoscan-gstreamer-targets.cmake file
+install(EXPORT holoscan-gstreamer-targets
+    NAMESPACE holoscan::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/holoscan-gstreamer
+    COMPONENT gstreamer
+)
+
+# Generate holoscan-gstreamer-config.cmake and version file so that downstream
+# projects can locate the package via find_package(holoscan-gstreamer).
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/holoscan-gstreamer-config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/holoscan-gstreamer-config.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/holoscan-gstreamer"
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/holoscan-gstreamer-config-version.cmake"
+    VERSION 1.0.0
+    COMPATIBILITY SameMajorVersion
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/holoscan-gstreamer-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/holoscan-gstreamer-config-version.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/holoscan-gstreamer"
+    COMPONENT gstreamer
+)
+
+# Install headers. gst/ headers go into the gst/ subdestination so that the
+# relative #include "gst/buffer.hpp" paths inside installed root headers resolve
+# correctly; install(FILES) strips path components, so the destination must
+# include the subdirectory explicitly.
+install(FILES
+  gst_sink_bridge.hpp
+  gst_sink_resource.hpp
+  gst_sink_op.hpp
+  gst_src_bridge.hpp
+  gst_src_op.hpp
+  gst_src_resource.hpp
+  gst_video_recorder_op.hpp
+  gst_pipeline_bus_monitor.hpp
+  gst_wait_group.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/holoscan/operators/gstreamer
+  COMPONENT gstreamer)
+
+install(FILES
+  gst/allocator.hpp
+  gst/app_sink.hpp
+  gst/app_src.hpp
+  gst/buffer.hpp
+  gst/bus.hpp
+  gst/caps.hpp
+  gst/config.hpp
+  gst/cuda_context.hpp
+  gst/element.hpp
+  gst/error.hpp
+  gst/memory.hpp
+  gst/message.hpp
+  gst/mini_object.hpp
+  gst/object.hpp
+  gst/pad.hpp
+  gst/pipeline.hpp
+  gst/sample.hpp
+  gst/video_info.hpp
+  gst/wrapper_base.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/holoscan/operators/gstreamer/gst
+  COMPONENT gstreamer)
+
+# CTest: install the gstreamer component into a temp prefix, then verify
+# find_package(holoscan-gstreamer) resolves correctly against the install tree.
+if(BUILD_TESTING)
+    enable_testing()
+
+    set(_gst_test_prefix "${CMAKE_CURRENT_BINARY_DIR}/tests/cmake/install_prefix")
+
+    # Fixture: cmake --install with --component gstreamer so only this operator's
+    # artifacts land in the temp prefix (safe in standalone and superbuild contexts).
+    add_test(
+        NAME holoscan_gstreamer_install
+        COMMAND "${CMAKE_COMMAND}"
+            --install "${CMAKE_BINARY_DIR}"
+            --component gstreamer
+            --prefix   "${_gst_test_prefix}"
+    )
+    set_tests_properties(holoscan_gstreamer_install PROPERTIES
+        FIXTURES_SETUP holoscan_gstreamer_pkg_fixture
+    )
+
+    set(_gst_test_build "${CMAKE_CURRENT_BINARY_DIR}/tests/cmake/test_find_package/build")
+
+    # Configure: run find_package(holoscan-gstreamer) against the installed tree
+    # and generate the check_includes build system.
+    add_test(
+        NAME holoscan_gstreamer_find_package
+        COMMAND "${CMAKE_COMMAND}"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/test_find_package"
+            -B "${_gst_test_build}"
+            "-Dholoscan-gstreamer_DIR=${_gst_test_prefix}/${CMAKE_INSTALL_LIBDIR}/cmake/holoscan-gstreamer"
+            --no-warn-unused-cli
+    )
+    set_tests_properties(holoscan_gstreamer_find_package PROPERTIES
+        FIXTURES_REQUIRED holoscan_gstreamer_pkg_fixture
+        FIXTURES_SETUP    holoscan_gstreamer_configure_fixture
+    )
+
+    # Build: compile and link check_includes against holoscan::holoscan_gstreamer_bridge,
+    # verifying both the installed include path and the imported library location.
+    add_test(
+        NAME holoscan_gstreamer_build
+        COMMAND "${CMAKE_COMMAND}" --build "${_gst_test_build}"
+    )
+    set_tests_properties(holoscan_gstreamer_build PROPERTIES
+        FIXTURES_REQUIRED holoscan_gstreamer_configure_fixture
+    )
+endif()
+
+# Print some information
+message(STATUS "Holoscan GStreamer Bridge Library")
+message(STATUS "GStreamer include dirs: ${GSTREAMER_INCLUDE_DIRS}")
+message(STATUS "GStreamer libraries: ${GSTREAMER_LIBRARIES}")
+message(STATUS "GStreamer library dirs: ${GSTREAMER_LIBRARY_DIRS}")

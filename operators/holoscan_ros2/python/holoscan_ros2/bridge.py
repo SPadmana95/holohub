@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,7 +99,18 @@ class Bridge(holoscan.core.Resource):
         except rclpy.executors.ExternalShutdownException:
             # Expected when ROS2 shuts down externally (e.g., Ctrl+C)
             pass
-        except Exception as e:
+        except (
+            ArithmeticError,
+            AssertionError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            LookupError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as e:
             # Log other unexpected exceptions but don't crash
             print(f"ROS2 spinning thread encountered an error: {e}")
 
@@ -189,10 +200,11 @@ class Bridge(holoscan.core.Resource):
                 message_type: Type of messages to receive (e.g., std_msgs.msg.String)
                 message_queue_max_size: Maximum size of message queue (0 for unlimited)
             """
+            if message_queue_max_size < 0:
+                raise ValueError("message_queue_max_size must be >= 0")
             self.message_queue_max_size = message_queue_max_size
-            self.message_queue = Queue(
-                maxsize=message_queue_max_size if message_queue_max_size > 0 else 0
-            )
+
+            self.message_queue = Queue(maxsize=max(0, message_queue_max_size))
             self.promise_queue = Queue()
             self.lock = threading.Lock()
 

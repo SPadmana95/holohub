@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 EndoGaussian Project
+# Copyright (c) 2025-2026, EndoGaussian Project
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,14 +23,19 @@
 """
 HexPlane multi-resolution feature grid for 4D (space-time) representation.
 MIT-licensed implementation derived from 4DGaussians and K-Planes projects.
+
+Provenance: Kept in-tree (training/scene/) because upstream 4DGaussians/K-Planes
+do not publish an installable package for this component; it is adapted to our
+GSplat training stack. Not a bundled third-party library—derived implementation
+under the stated license.
 """
 
 import itertools
-from typing import Collection, Iterable, Optional, Sequence
+from collections.abc import Collection, Iterable, Sequence
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 def get_normalized_directions(directions):
@@ -106,7 +111,7 @@ def interpolate_ms_features(
     ms_grids: Collection[Iterable[nn.Module]],
     grid_dimensions: int,
     concat_features: bool,
-    num_levels: Optional[int],
+    num_levels: int | None,
 ) -> torch.Tensor:
     coo_combs = list(itertools.combinations(range(pts.shape[-1]), grid_dimensions))
     if num_levels is None:
@@ -176,7 +181,7 @@ class HexPlaneField(nn.Module):
         self.aabb = nn.Parameter(aabb, requires_grad=True)  # !!!!!
         print("Voxel Plane: set aabb=", self.aabb)
 
-    def get_density(self, pts: torch.Tensor, timestamps: Optional[torch.Tensor] = None):
+    def get_density(self, pts: torch.Tensor, timestamps: torch.Tensor | None = None):
         """Computes and returns the densities."""
         pts = normalize_aabb(pts, self.aabb)
 
@@ -189,7 +194,7 @@ class HexPlaneField(nn.Module):
 
         features = interpolate_ms_features(
             pts,
-            ms_grids=self.grids,  # noqa
+            ms_grids=self.grids,
             grid_dimensions=self.grid_config[0]["grid_dimensions"],
             concat_features=self.concat_features,
             num_levels=None,
@@ -200,7 +205,7 @@ class HexPlaneField(nn.Module):
 
         return features
 
-    def forward(self, pts: torch.Tensor, timestamps: Optional[torch.Tensor] = None):
+    def forward(self, pts: torch.Tensor, timestamps: torch.Tensor | None = None):
 
         features = self.get_density(pts, timestamps)
 

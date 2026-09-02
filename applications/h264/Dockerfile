@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,13 +19,13 @@
 ############################################################
 
 ARG BASE_SDK_VERSION
-FROM nvcr.io/nvidia/clara-holoscan/holoscan:v${BASE_SDK_VERSION}-cuda13 as base
+FROM nvcr.io/nvidia/clara-holoscan/holoscan:v${BASE_SDK_VERSION}-cuda13 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 # --------------------------------------------------------------------------
 #
-# Holohub dev setup 
+# Holohub dev setup
 #
 RUN mkdir -p /tmp/scripts
 COPY holohub /tmp/scripts/
@@ -63,4 +63,3 @@ WORKDIR /
 #ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/aarch64-linux-gnu/tegra/
 
 RUN /install_dependencies.sh
-

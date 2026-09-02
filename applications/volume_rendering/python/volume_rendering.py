@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -306,7 +306,7 @@ def main():
     app = VolumeRenderingApp(
         render_config_file=str(args.config),
         render_preset_files=(
-            map(lambda x: str(x), args.render_preset_files) if args.render_preset_files else None
+            (str(x) for x in args.render_preset_files) if args.render_preset_files else None
         ),
         write_config_file=str(args.write_config_file),
         density_volume_file=str(args.density),
@@ -319,8 +319,19 @@ def main():
 
     try:
         app.run()
-    except Exception as e:
-        logger.error("Error:", str(e))
+    except (
+        ArithmeticError,
+        AssertionError,
+        AttributeError,
+        EOFError,
+        ImportError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as e:
+        logger.error("Error: %s", e)
 
     print("Application has finished running.")
 

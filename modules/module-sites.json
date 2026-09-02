@@ -1,0 +1,47 @@
+{
+  "$schema": "../utilities/metadata/module-sites.schema.json",
+  "modules": [
+    {
+      "name": "holoscan-gstreamer",
+      "nvidia_quality_score": 3
+    },
+    {
+      "name": "holoscan-deltacast",
+      "url": "https://github.com/deltacasttv/holoscan-modules",
+      "ref": "36deda4f925dfb7aaa69df70459246f154f4dcdd",
+      "provides_operators": ["deltacast_videomaster"],
+      "nvidia_quality_score": 2
+    },
+    {
+      "name": "holoscan-sensor-bridge",
+      "url": "https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git",
+      "ref": "c34f9fe876462e2fa83877527f86fe0427346cc0",
+      "provides_operators": [
+        "argus_isp",
+        "audio_packetizer",
+        "compute_crc",
+        "csi_to_bayer",
+        "emulator",
+        "fusa_coe_capture",
+        "gpu_roce_transceiver",
+        "image_processor",
+        "image_shift_to_uint8",
+        "iq_dec",
+        "iq_enc",
+        "linux_coe_receiver",
+        "linux_receiver",
+        "packed_format_converter",
+        "pva_crc",
+        "roce_receiver",
+        "roce_transmitter",
+        "sig_gen",
+        "sig_viewer",
+        "sipl_capture",
+        "sub_frame_combiner",
+        "sub_frame_visualizer",
+        "udp_transmitter"
+      ],
+      "nvidia_quality_score": 5
+    }
+  ]
+}

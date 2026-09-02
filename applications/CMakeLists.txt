@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +14,27 @@
 # limitations under the License.
 
 # Make sure to order by alphabetical list
-add_holohub_application(adv_networking_bench DEPENDS
-                        OPERATORS advanced_network)
+add_holohub_application(ai_surgical_video DEPENDS
+                        OPERATORS orsi_format_converter
+                                  orsi_segmentation_preprocessor
+                        OPTIONAL  aja_source
+                                  csi_to_bayer
+                                  image_processor
+                                  image_shift_to_uint8
+                                  roce_receiver
+                        )
 
 add_holohub_application(aja_video_capture DEPENDS
                         OPERATORS aja_source)
 
 add_holohub_application(async_buffer_deadline)
 
-add_holohub_application(basic_networking_ping DEPENDS
-                        OPERATORS basic_network)
+add_holohub_application(atracsys_visualizer DEPENDS
+                        OPERATORS atracsys_mode_switcher
+                        OPTIONAL  atracsys_camera)
+
+add_holohub_application(bci_visualization DEPENDS
+                        OPERATORS volume_renderer)
 
 add_holohub_application(body_pose_estimation DEPENDS
                         OPERATORS OPTIONAL dds_video_subscriber dds_video_publisher)
@@ -32,9 +43,17 @@ add_holohub_application(colonoscopy_segmentation DEPENDS OPERATORS OPTIONAL aja_
 
 add_holohub_application(cvcuda_basic DEPENDS OPERATORS cvcuda_holoscan_interop)
 
+add_holohub_application(daqiri_raw_ethernet_bench)
+
+add_holohub_application(daqiri_socket_ping)
+
 add_subdirectory(dds)
 
 add_holohub_application(deltacast_transmitter DEPENDS
+                        OPERATORS deltacast_videomaster
+                        )
+
+add_holohub_application(deltacast_receiver DEPENDS
                         OPERATORS deltacast_videomaster
                         )
 
@@ -56,12 +75,22 @@ add_holohub_application(endoscopy_tool_tracking DEPENDS
                                   yuan_qcap
                                   vtk_renderer)
 
-add_subdirectory(h264)
+add_holohub_application(foxglove_endoscopy_tool_tracking DEPENDS
+                        OPERATORS foxglove
+                                  lstm_tensor_rt_inference
+                                  tool_tracking_postprocessor)
 
-add_holohub_application(isaac_sim_holoscan_bridge)
+add_subdirectory(gstreamer)
+
+
+add_subdirectory(h264)
 
 add_holohub_application(high_speed_endoscopy DEPENDS
                         OPERATORS emergent_source)
+
+add_holohub_application(holocat)
+
+add_holohub_application(isaac_sim_holoscan_bridge)
 
 add_subdirectory(holoscan_ros2)
 
@@ -69,13 +98,23 @@ add_subdirectory(holoviz)
 
 add_holohub_application(imaging_ai_segmentator)
 
+add_holohub_application(imx274_gpu_resident DEPENDS
+                        OPERATORS hsb_roce_receiver_nmd
+                                  csi_to_bayer_gpu_resident
+                                  image_processor_gpu_resident
+                                  display_gpu_resident
+                        OPTIONAL hsb_roce_receiver_doca_gpunetio)
+
 add_holohub_application(hyperspectral_segmentation)
 
 add_holohub_application(iio DEPENDS OPERATORS iio_controller fft)
 
 add_subdirectory(laser_detection_latency)
 
-add_holohub_application(monai_endoscopic_tool_seg DEPENDS OPERATORS aja_source)
+add_holohub_application(tracks2endo4d DEPENDS OPERATORS tapnext_inference)
+
+add_holohub_application(monai_endoscopic_tool_seg DEPENDS
+                        OPERATORS OPTIONAL aja_source)
 add_holohub_application(multiai_endoscopy DEPENDS
                         OPERATORS OPTIONAL aja_source)
 add_holohub_application(multiai_ultrasound DEPENDS
@@ -84,8 +123,7 @@ add_holohub_application(multiai_ultrasound DEPENDS
 add_subdirectory(nvidia_video_codec)
 
 add_holohub_application(simple_radar_pipeline)
-add_holohub_application(simple_pdw_pipeline DEPENDS
-                        OPERATORS basic_network)
+add_holohub_application(simple_pdw_pipeline)
 
 add_holohub_application(object_detection_torch DEPENDS
                         OPERATORS OPTIONAL aja_source)
@@ -96,7 +134,11 @@ add_holohub_application(pipeline_visualization)
 
 add_holohub_application(polyp_detection)
 
+add_holohub_application(procedural_narrator DEPENDS
+                        OPERATORS online_video_reasoner)
+
 add_holohub_application(pva_video_filter)
+add_holohub_application(pva_radar_pipeline DEPENDS OPERATORS pva_radar pva_radar_graphics raw_radar_cube_source)
 
 add_holohub_application(prohawk_video_replayer DEPENDS OPERATORS prohawk_video_processing)
 
@@ -104,19 +146,21 @@ add_holohub_application(qt_video_replayer DEPENDS OPERATORS qt_video npp_filter)
 
 add_holohub_application(realsense_visualizer DEPENDS OPERATORS realsense_camera)
 
+add_holohub_application(st2110_demo DEPENDS
+                        OPERATORS st2110_source)
+
 add_holohub_application(stereo_vision)
 
 add_holohub_application(surgical_scene_recon)
 
+add_holohub_application(tak)
+
 add_holohub_application(tao_peoplenet)
 
-add_holohub_application(network_radar_pipeline DEPENDS
-                        OPERATORS basic_network
-                                  advanced_network)
+add_holohub_application(network_radar_pipeline)
 
 add_holohub_application(psd_pipeline DEPENDS
-                        OPERATORS advanced_network
-                                  fft
+                        OPERATORS fft
                                   high_rate_psd
                                   low_rate_psd
                                   vita49_psd_packetizer
@@ -126,9 +170,7 @@ add_holohub_application(ultrasound_segmentation DEPENDS
                         OPERATORS OPTIONAL aja_source)
 
 add_holohub_application(velodyne_lidar_app DEPENDS
-                        OPERATORS velodyne_lidar
-                                  basic_network
-                                  )
+                        OPERATORS velodyne_lidar)
 
 add_holohub_application(volume_rendering DEPENDS
                         OPERATORS volume_loader
@@ -146,6 +188,7 @@ add_subdirectory(video_streaming)
 add_holohub_application(webrtc_video_server)
 
 add_holohub_application(yolo_model_deployment)
+
 add_holohub_application(vila_live)
 add_holohub_application(holochat)
 add_holohub_application(xr_holoviz DEPENDS OPERATORS xr)
@@ -154,3 +197,4 @@ add_subdirectory(orsi)
 add_subdirectory(nvidia_nim)
 add_subdirectory(ehr_query_llm)
 add_subdirectory(slang)
+add_holohub_application(ultrasound_postprocessing)

@@ -5,22 +5,25 @@ The inference is executed using `torch` backend in `holoinfer` module in Holosca
 
 `object_detection_torch.yaml` is the configuration file. Input video file is converted into GXF tensors and the name and location of the GXF tensors are updated in the `basename` and the `directory` field in `replayer`.
 
-This application need `Libtorch` for inferencing. Ensure that the Holoscan SDK is build with `build_libtorch` flag as true. If not, then rebuild the SDK with following: `./holohub build --build_libtorch true` before running this application.
+This application requires LibTorch for inference. Use the application-specific
+container through `./holohub`; its Dockerfile verifies PyTorch from the selected
+base image, configures its LibTorch runtime for the C++ application, and
+installs a matching `torchvision` version.
 
 ## Data
 
 To run this application, you will need the following:
 
 - Model name: frcnn_resnet50_t.pt
-    - The model should be converted to torchscript format.  The original pytorch model can be downloaded from [pytorch model](https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html). `frcnn_resnet50_t.pt` is used
+  - The model should be converted to torchscript format.  The original pytorch model can be downloaded from [pytorch model](https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html). `frcnn_resnet50_t.pt` is used
 - Model configuration file: frcnn_resnet50_t.yaml
-    - Model config documents input and output nodes, their dimensions and respective datatype.
+  - Model config documents input and output nodes, their dimensions and respective datatype.
 - Labels file: labels.txt
-    - Labels for identified objects.
+  - Labels for identified objects.
 - Postprocessor configuration file: postprocessing.yaml
-    - This configuration stores the number and type of objects to be identified. By default, the application detects and generates bounding boxes for `car` (max 50), `person` (max 50), `motorcycle` (max 10) in the input frame. All remaining identified objects are tagged with label `object` (max 50).
-    - Additionally, color of the bounding box for each identified object can be set.
-    - Threshold of scores can be set in the `params`. Default value is 0.75.
+  - This configuration stores the number and type of objects to be identified. By default, the application detects and generates bounding boxes for `car` (max 50), `person` (max 50), `motorcycle` (max 10) in the input frame. All remaining identified objects are tagged with label `object` (max 50).
+  - Additionally, color of the bounding box for each identified object can be set.
+  - Threshold of scores can be set in the `params`. Default value is 0.75.
 
 Sample dataset can be any video file freely available for testing on the web. E.g. [Traffic video](https://www.pexels.com/video/cars-on-highway-854671/)
 
@@ -35,6 +38,7 @@ If resolution is updated in entity generation, it must be updated in the followi
 <data_dir>/object_detection_torch/postprocessing.yaml
 
 ## Quick start
+
 If you want to quickly run this application, you can use the `./holohub run` command.
 
 ```sh
@@ -81,6 +85,22 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/hpcx/ompi/lib"
 
 ## Containerize the application
 
-To containerize the application using [Holoscan CLI](https://docs.nvidia.com/holoscan/sdk-user-guide/cli/cli.html), first build the application using `./holohub install object_detection_torch`, run the `package-app.sh` script and then follow the generated output to package and run the application.
+> [!IMPORTANT]
+> This helper requires the application packager from `holoscan-cli` 4.2.0 or
+> earlier. Current `./holohub package` builds Holoscan Module artifacts instead.
 
-Refer to the [Packaging Holoscan Applications](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_packager.html) section of the [Holoscan User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/) to learn more about installing the Holoscan CLI or packaging your application using Holoscan CLI.
+To containerize the application using the legacy [Holoscan CLI](https://github.com/nvidia-holoscan/holoscan-sdk/tree/main/examples/cli_packager), first build the application using `./holohub install object_detection_torch`, run the `package-app.sh` script and then follow the generated output to package and run the application.
+
+Refer to the [Packaging Holoscan Applications](https://github.com/nvidia-holoscan/holoscan-sdk/tree/main/examples/cli_packager) section of the [Holoscan User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/getting-started) to learn more about installing the legacy Holoscan CLI or packaging your application using Holoscan CLI.
+
+## Known Issues
+
+**Limited platform support**: The Faster R-CNN PyTorch model in this example relies on symbols available only in `torchvision<=0.23.0`. arm64 SBSA platforms and x86_64 platforms with CUDA Toolkit >= 13.0 are currently not supported as no compatible combination of Holoscan SDK, PyTorch (CUDA), and torchvision (CUDA) are available for these platforms.
+
+Please refer to the docker file for information about the torchvision version on different platforms.
+
+The application container will fail to build on other platforms with the error:
+
+```bash
+ERROR: No matching distribution found
+```

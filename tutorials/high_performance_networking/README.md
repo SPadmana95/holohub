@@ -1,19 +1,32 @@
 # High Performance Networking with Holoscan
 
+!!! warning "MIGRATION NOTICE"
+
+    **This tutorial covers the legacy in-tree networking implementation.**
+    High-performance networking is now implemented in the standalone networking
+    library, [DAQIRI](https://github.com/NVIDIA/daqiri). The content below is
+    retained for historical reference.
+
+    For the latest guidelines, please refer to the DAQIRI documentation:
+
+    - [System Configuration](https://nvidia.github.io/daqiri/tutorials/system_configuration/) — prepare and tune your system
+    - [Benchmarking Examples](https://nvidia.github.io/daqiri/benchmarks/raw_benchmarking/) — measure networking throughput and latency
+    - [DAQIRI + Holoscan Integration](https://nvidia.github.io/daqiri/tutorials/daqiri-holoscan-integration/) — connect DAQIRI to a Holoscan pipeline
+
 This tutorial demonstrates how to use the Advanced Network library (referred to as `advanced_network` in HoloHub) for low latency and high throughput communication through NVIDIA SmartNICs. With a properly tuned system, the Advanced Network library can achieve hundreds of Gbps with latencies in the low microseconds.
 
 !!! note
 
     This solution is designed for users who want to create a Holoscan application that will interface with an external system or sensor over Ethernet.
 
-    - For high performance communication with systems also running Holoscan, refer to the [Holoscan distributed application documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_create_distributed_app.html) instead.
+    - For high performance communication with systems also running Holoscan, refer to the [Holoscan distributed application documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/create-a-distributed-application) instead.
     - For JESD-compliant sensor without Ethernet support, consider the [Holoscan Sensor Bridge](https://docs.nvidia.com/holoscan/sensor-bridge/latest/introduction.html) for an FPGA-based interface to Holoscan.
 
 ## Prerequisites
 
-Achieving High Performance Networking with Holoscan requires a system with an [**NVIDIA SmartNIC**](https://www.nvidia.com/en-us/networking/ethernet-adapters/) and a [**discrete GPU**](https://www.nvidia.com/en-us/design-visualization/desktop-graphics/). That is the case of [NVIDIA Data Center](https://www.nvidia.com/en-us/data-center/) systems, or edge systems like the [NVIDIA IGX](https://www.nvidia.com/en-us/edge-computing/products/igx/) platform and the [NVIDIA Project DIGITS](https://www.nvidia.com/en-us/project-digits/). `x86_64` systems equipped with these components are also supported, though the performance will vary greatly depending on the PCIe topology of the system (more on this [below](#31-ensure-ideal-pcie-topology)).
+Achieving High Performance Networking with Holoscan requires a system with an [**NVIDIA SmartNIC**](https://www.nvidia.com/en-us/networking/ethernet-adapters/) and a [**discrete GPU**](https://www.nvidia.com/en-us/design-visualization/desktop-graphics/). That is the case of [NVIDIA Data Center](https://www.nvidia.com/en-us/data-center/) systems, or edge systems like the [NVIDIA IGX](https://www.nvidia.com/en-us/edge-computing/products/igx/) platform and the [NVIDIA DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/). `x86_64` systems equipped with these components are also supported, though the performance will vary greatly depending on the PCIe topology of the system (more on this [below](#31-ensure-ideal-pcie-topology)).
 
-In this tutorial, we will be developing on an **NVIDIA IGX Orin platform** with [IGX SW 1.1](https://docs.nvidia.com/igx-orin/user-guide/latest/base-os.html) and an [NVIDIA RTX 6000 ADA GPU](https://www.nvidia.com/en-us/design-visualization/rtx-6000/), which is the configuration that is currently actively tested. The concepts should be applicable to other systems based on Ubuntu 22.04 as well. It should also work on other Linux distributions with a glibc version of 2.35 or higher by containerizing the dependencies and applications on top of an Ubuntu 22.04 image, but this is not actively tested at this time.
+In this tutorial, we will be developing on an **NVIDIA IGX Orin platform** with [IGX SW 1.1](https://docs.nvidia.com/igx/user-guide/latest/base-os.html) and an [NVIDIA RTX 6000 ADA GPU](https://www.nvidia.com/en-us/design-visualization/rtx-6000/), which is the configuration that is currently actively tested. The concepts should be applicable to other systems based on Ubuntu 22.04 as well. It should also work on other Linux distributions with a glibc version of 2.35 or higher by containerizing the dependencies and applications on top of an Ubuntu 22.04 image, but this is not actively tested at this time.
 
 !!! Warning "Secure boot conflict"
 
@@ -60,7 +73,6 @@ Which backend is best for your use case will depend on multiple factors, such as
         - Supported on NVIDIA optimized Linux kernels, including IGX OS and DGX OS.
         - Supported by all MOFED drivers (requires rebuilding nvidia-dkms drivers afterwards).
     - [`DMA Buf`](https://docs.kernel.org/driver-api/dma-buf.html), supported on Linux kernels 5.12+ with NVIDIA open-source drivers 515+ and CUDA toolkit 11.7+.
-
 
 ## 1. Installing Holoscan Networking
 
@@ -177,7 +189,6 @@ sudo reboot
 
 Running `ibstat` or `ibv_devinfo` will confirm your NIC interfaces are recognized by your drivers.
 
-
 ### 2.2 Switch your NIC Link Layers to Ethernet
 
 NVIDIA SmartNICs can function in two separate modes (called link layer):
@@ -246,7 +257,7 @@ ibv_devinfo
 
 **For Holoscan Networking, we want the NIC to use the ETH link layer.** To switch the link layer mode, there are two possible options:
 
-1. On IGX Orin developer kits, you can switch that setting through the BIOS: [see IGX Orin documentation](https://docs.nvidia.com/igx-orin/user-guide/latest/switch-network-link.html).
+1. On IGX Orin developer kits, you can switch that setting through the BIOS: [see IGX Orin documentation](https://docs.nvidia.com/igx/user-guide/latest/switch-network-link.html).
 2. On any system with a NVIDIA NIC (including the IGX Orin developer kits), you can run the commands below from a terminal:
 
     1. Identify the PCI address of your NVIDIA NIC
@@ -620,7 +631,6 @@ lspci -tv
 
     Most x86_64 systems are not designed for this topology as they lack a discrete PCIe switch. In that case, the best connection they can achieve is `NODE`.
 
-
 ### 3.2 Check the NIC's PCIe configuration
 
 !!! quote "[Understanding PCIe Configuration for Maximum Performance - May 27, 2022](https://enterprise-support.nvidia.com/s/article/understanding-pcie-configuration-for-maximum-performance)"
@@ -629,7 +639,7 @@ lspci -tv
 
 The instructions below are meant to understand if your system is able to extract the maximum capabilities of your NIC, but they're not configurable. The two values that we are looking at here are the Max Payload Size (MPS - the maximum size of a PCIe packet) and the Speed (or PCIe generation).
 
-##### Max Payload Size (MPS)
+#### Max Payload Size (MPS)
 
 === "tune_system.py"
 
@@ -692,7 +702,6 @@ The instructions below are meant to understand if your system is able to extract
 
         While your NIC might be capable of more, 256 bytes is generally the largest supported by any switch/CPU at this time.
 
-
 ##### PCIe Speed/Generation
 
 Identify the PCIe address of your NVIDIA NIC:
@@ -748,7 +757,6 @@ Unlike the PCIe properties queried in the previous section, the MRRS is configur
         cd holohub
         sudo ./operators/advanced_network/python/tune_system.py --check mrrs
         ```
-
 
 === "manual"
 
@@ -844,7 +852,6 @@ While it is naturally beneficial for CPU packets, it is also needed when routing
         Mount Point          Options
         /dev/hugepages       rw,relatime,pagesize=2M
         ```
-
 
 === "vanilla"
 
@@ -955,7 +962,6 @@ The example below allocates 3 huge pages of 1GB each.
 
         If you work with containers, remember to mount this directory in your container as well with `-v /mnt/huge:/mnt/huge`.
 
-
 Rerunning the initial commands should now list 3 hugepages of 1GB each. 1GB will be the default huge page size if updated in the kernel bootline only.
 
 ### 3.5 Isolate CPU cores
@@ -1056,7 +1062,6 @@ When a core goes idle/to sleep, coming back online to poll the NIC can cause lat
 
 Check the current governor for each of your cores:
 
-
 === "tune_system.py"
 
     === "Debian installation"
@@ -1156,7 +1161,7 @@ Similarly to the above, we want to maximize the GPU's clock speed and prevent it
 
 Run the following command to check your current clocks and whether they're locked (persistence mode):
 
-```
+```text
 nvidia-smi -q | grep -i "Persistence Mode"
 nvidia-smi -q -d CLOCK
 ```
@@ -1188,7 +1193,6 @@ nvidia-smi -q -d CLOCK
             Video                             : 1950 MHz
         ...
     ```
-
 
 To lock the GPU's clocks to their max values:
 
@@ -1241,7 +1245,6 @@ You can confirm that the clocks are set to the max values by running `nvidia-smi
 !!! note
 
     Some max clocks might not be achievable in certain configurations, or due to boost clocks (SM) or rounding errors (Memory),  despite the lock commands indicating it worked. For example - on IGX - the max non-boot SM clock will be 1920 MHz, and the max memory clock will show 8000 MHz, which are satisfying compared to the initial mode.
-
 
 ### 3.8 Maximize GPU BAR1 size
 
@@ -1296,7 +1299,7 @@ The GPU BAR1 memory is the primary resource consumed by `GPUDirect`. It allows o
 
     **If you attempt to go forward with the instructions below without meeting the above requirements, you might render your GPU unusable.**
 
-##### BIOS Resizable BAR support
+#### BIOS Resizable BAR support
 
 First, check if your system and BIOS support resizable BAR. Refer to your system's manufacturer documentation to access the BIOS. The Resizable BAR option is often categorized under `Advanced > PCIe` settings. Enable this feature if found.
 
@@ -1304,7 +1307,7 @@ First, check if your system and BIOS support resizable BAR. Refer to your system
 
     The IGX Developer kit with IGX OS 1.1+ supports resizable BAR by default.
 
-##### GPU Resizable BAR support
+#### GPU Resizable BAR support
 
 Next, you can check if your GPU has physical resizable BAR by running the following command:
 
@@ -1400,14 +1403,13 @@ Press `y` to confirm you'd like to continue, then `y` again to apply to all the 
 
 Reboot your system, and check the BAR1 size again to confirm the change.
 
-```
+```bash
 sudo reboot
 ```
 
 ### 3.9 Enable Jumbo Frames
 
 Jumbo frames are Ethernet frames that carry a payload larger than the standard 1500 bytes MTU (Maximum Transmission Unit). They can significantly improve network performance when transferring large amounts of data by reducing the overhead of packet headers and the number of packets that need to be processed.
-
 
 **We recommend an MTU of 9000 bytes on all interfaces involved in the data path.** You can check the current MTU of your interfaces:
 
@@ -1493,7 +1495,7 @@ Make sure to install [`holoscan-networking`](#1-installing-holoscan-networking) 
 
 ### 4.1 Update the loopback configuration
 
-##### Find the application files
+#### Find the application files
 
 Identify the location of the `adv_networking_bench` executable, and of the configuration file named `adv_networking_bench_default_tx_rx.yaml`, for your installation:
 
@@ -1615,7 +1617,7 @@ interfaces:
 
 To run the benchmarking application to run a loopback on your system, you'll need to modify the `bench_tx` section which configures the application itself, to create the packet headers and direct the packets to the NIC. Make sure to remove the template brackets `< >`.
 
--  `eth_dst_addr` with the MAC address (and not the PCIe address) of the NIC interface you want to use for Rx. You can get the MAC address of your `if_name` interface with `#!bash cat /sys/class/net/$if_name/address`:
+- `eth_dst_addr` with the MAC address (and not the PCIe address) of the NIC interface you want to use for Rx. You can get the MAC address of your `if_name` interface with `#!bash cat /sys/class/net/$if_name/address`:
 
 ```yaml hl_lines="4"
 bench_tx:
@@ -1669,7 +1671,6 @@ After having modified the configuration file, ensure you have connected an SFP c
           --docker-opts "-u 0 --privileged" \
           -- bash -c "./install/examples/adv_networking_bench/adv_networking_bench adv_networking_bench_default_tx_rx.yaml"
         ```
-
 
 The application will run indefinitely. You can stop it gracefully with `Ctrl-C`. You can also uncomment and set the `max_duration_ms` field in the `scheduler` section of the configuration file to limit the duration of the run automatically.
 
@@ -1984,7 +1985,6 @@ sudo mlnx_perf -i $if_name
 
         You might need to kill some of the listed processes to free up GPU VRAM.
 
-
 ## 5. Building your own application
 
 This section will guide you through building your own application using the `adv_networking_bench` as an example. Make sure to install [`holoscan-networking`](#1-installing-holoscan-networking) first.
@@ -2007,7 +2007,7 @@ This section will guide you through building your own application using the `adv
         ./applications/adv_networking_bench/cpp/main.cpp
         ```
 
-    If you are not yet familiar with how Holoscan applications are constructed, please refer to the [Holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_core.html) first.
+    If you are not yet familiar with how Holoscan applications are constructed, please refer to the [Holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/holoscan-core) first.
 
 Let's look at the `adv_networking_bench_default_tx_rx.yaml` file below. Click on the (1) icons below to expand explanations for each annotated line.
 { .annotate }
@@ -2105,7 +2105,7 @@ bench_tx: # (31)!
   udp_dst_port: 4096        # UDP destination port
 ```
 
-1. The `scheduler` section is passed to the multi threaded scheduler we declare in the `#!cpp main()` function of this application. See the [holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/components/schedulers.html) and [API docs](https://docs.nvidia.com/holoscan/sdk-user-guide/api/cpp/classholoscan_1_1multithreadscheduler.html) for more details. This is related to the Holoscan core library and is not specific to Holoscan Networking.
+1. The `scheduler` section is passed to the multi threaded scheduler we declare in the `#!cpp main()` function of this application. See the [holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/components/schedulers#multithreadscheduler) for more details. This is related to the Holoscan core library and is not specific to Holoscan Networking.
 2. The `advanced_network` section is passed to the `advanced_network::adv_net_init` which is responsible for setting up the NIC. That function should be called in your `#!cpp Application::compose()` function.
 3. `manager` is the backend networking library. default: `dpdk`. Other: `gpunetio` (DOCA GPUNet IO + DOCA Ethernet & Flow). Coming soon: `rivermax`, `rdma`.
 4. `master_core` is the ID of the CPU core used for setup. It does not need to be isolated, and is recommended to differ differ from the `cpu_core` fields below used for polling the NIC.
@@ -2303,11 +2303,14 @@ bench_tx: # (31)!
     5. Run your application like so:
 
         ```bash
-        ./holohub run --img holohub:my_app --docker-opts "-u 0 --privileged" --bash -c "./build/my_app/applications/my_app my_app_config.yaml"
+        ./holohub run-container my_app --img holohub:my_app \
+          --docker-opts "-u 0 --privileged" -- \
+          "./build/my_app/applications/my_app my_app_config.yaml"
         ```
 
         or, if you have set up a shortcut to run your application with its config file through its `metadata.json` (see other apps for examples):
 
         ```bash
-        ./holohub run --no-local-build --container_args " -u 0 --privileged"
+        ./holohub run my_app --no-local-build --img holohub:my_app \
+          --docker-opts "-u 0 --privileged"
         ```

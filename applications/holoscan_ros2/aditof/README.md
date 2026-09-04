@@ -101,15 +101,22 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 > `--language cpp` is used throughout because both language variants share the same
 > Dockerfile and there is nothing to compile for Python.
 
+Build the container from the HoloHub root. It is used for both C++ and Python.
+
 ```sh
-# Build container (from holohub root) — used for both C++ and Python
 ./holohub build-container aditof --language cpp \
   --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v4.6.0-cuda13
+```
 
-# Launch container
+Launch the container.
+
+```sh
 ./holohub run-container aditof --language cpp
+```
 
-# Inside container — build C++ binaries (Python needs no build step)
+Inside the container, build the C++ binaries. Python needs no build step.
+
+```sh
 ./holohub build aditof --language cpp
 ```
 
@@ -124,13 +131,28 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 #### C++
 
-```sh
-# Set capture mode and start streaming
-./holohub run aditof publisher --language cpp --run-args="--captureMode 3"
+Print publisher options and exit.
 
-# Update sensor firmware using manifest file
-# adi_manifest.yaml lives at applications/holoscan_ros2/aditof/adi_manifest.yaml
-# Use the absolute container path to avoid working-directory ambiguity
+```sh
+./holohub run aditof publisher --language cpp
+```
+
+Print the Imager available capture mode map and exit.
+
+```sh
+./holohub run aditof publisher --language cpp --run-args="--getModes 1"
+```
+
+Set capture mode and start streaming.
+
+```sh
+./holohub run aditof publisher --language cpp --run-args="--captureMode 3"
+```
+
+Update sensor firmware using the manifest file. `adi_manifest.yaml` is in the
+application directory; the command uses its absolute container path.
+
+```sh
 ./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
 ```
 
@@ -139,20 +161,31 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 | Option | Default | Description |
 |---|---|---|
 | `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
-| `--captureMode <0-9>` | `6` | ADI capture mode |
+| `--captureMode <0-9>` | required | ADI capture mode for streaming |
 | `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
 | `--firmwareUpdate <yaml>` | — | Update sensor firmware using manifest file |
+| `--getModes <0\|1>` | `0` | Print the Imager available capture mode map and exit when set to `1` |
 | `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |
 | `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
 | `--ibv-port <n>` | `1` | IBV port |
 
 #### Python
 
-```sh
-# Set capture mode and start streaming
-./holohub run aditof publisher --language python --run-args="--captureMode 3"
+Print the Imager available capture mode map and exit.
 
-# Update sensor firmware using manifest file
+```sh
+./holohub run aditof publisher --language python --run-args="--getModes 1"
+```
+
+Set capture mode and start streaming.
+
+```sh
+./holohub run aditof publisher --language python --run-args="--captureMode 3"
+```
+
+Update sensor firmware using the manifest file.
+
+```sh
 ./holohub run aditof publisher --language python --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
 ```
 
@@ -161,9 +194,10 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 | Option | Default | Description |
 |---|---|---|
 | `--hololink <ip>` | `192.168.0.2` | IP address of the Hololink board |
-| `--captureMode <0-9>` | `6` | ADI capture mode |
+| `--captureMode <0-9>` | required | ADI capture mode for streaming |
 | `--resetPin <0-31>` | `0` | GPIO pin used for sensor reset |
 | `--firmwareUpdate <yaml>` | — | Update sensor firmware using manifest file |
+| `--getModes <0\|1>` | `0` | Print the Imager available capture mode map and exit when set to `1` |
 | `--force` | — | Allow firmware downgrade (use with `--firmwareUpdate`) |
 | `--frame-limit <n>` | `0` (unlimited) | Stop after N frames |
 | `--ibv-name <dev>` | auto | IBV device name (empty = LinuxReceiverOp) |
@@ -180,10 +214,10 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 #### Python
 
+Run without a display.
+
 ```sh
 ./holohub run aditof subscriber --language python
-
-# Run without a display (headless)
 ./holohub run aditof subscriber --language python --run-args="--headless"
 ```
 
@@ -191,11 +225,16 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 
 #### Installation
 
+Install RViz2.
+
 ```sh
 sudo apt update
 sudo apt install -y ros-jazzy-rviz2
+```
 
-# Verify
+Verify the installation.
+
+```sh
 source /opt/ros/jazzy/setup.bash
 rviz2 --version
 ```
@@ -263,16 +302,3 @@ Visualization Manager:
         Reliability Policy: Reliable
 EOF
 ```
-
----
-
-## Key Differences from `vb1940`
-
-| Aspect | `vb1940` | `aditof` |
-|---|---|---|
-| Sensor | VB1940 Eagle RGB camera | ADI ADTF3175 ToF sensor |
-| Message type | `sensor_msgs/Image` (rgb8) | `sensor_msgs/Image` (16UC1 depth/AB, 8UC1 conf) |
-| Published topics | 1 (`vb1940/image`) | 3 (`depth_image`, `ab_image`, `conf_image`) |
-| Unpack step | CUDA 16→8 bit conversion | `AdcamUnpackOp` (ADI 5-byte/pixel format) |
-| Receiver | `RoceReceiverOp` (IBV required) | `LinuxReceiverOp` (no IBV, works on JP 7.0) |
-| InfiniBand required | Yes (JP 7.1+ for Thor) | **No** (JP 7.0 compatible) |

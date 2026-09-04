@@ -35,6 +35,7 @@
  */
 
 #include <getopt.h>
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -279,13 +280,26 @@ int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
 
   // ── Defaults ───────────────────────────────────────────────────────────────
-  int32_t adcam_mode = 6;
+  int32_t adcam_mode = 0;
+  bool capture_mode_specified = false;
   int64_t frame_limit = 0;
   std::string hololink_ip = "192.168.0.2";
   std::string ibv_name;
   uint32_t ibv_port = 1;
   int32_t reset_pin = 0;
   std::string firmware_manifest;
+  bool get_modes = false;
+  const auto print_usage = []() {
+    std::cout << "Usage: holoscan_ros2_aditof_publisher [options]\n"
+              << "  --captureMode <0-9>       ADI capture mode (required for streaming)\n"
+              << "  --hololink <ip>           Hololink board IP (default 192.168.0.2)\n"
+              << "  --ibv-name <dev>          IBV device (empty = LinuxReceiverOp)\n"
+              << "  --ibv-port <n>            IBV port (default 1)\n"
+              << "  --frame-limit <n>         Stop after N frames (0=unlimited)\n"
+              << "  --resetPin <0-31>         Reset pin number\n"
+              << "  --firmwareUpdate <yaml>   Update firmware using manifest\n"
+              << "  --getModes <0|1>           Print the CCB capture mode map and exit when set to 1\n";
+  };
 
   // Auto-detect InfiniBand device (empty = use LinuxReceiverOp)
   try {
@@ -301,6 +315,7 @@ int main(int argc, char** argv) {
                                         {"ibv-port", required_argument, nullptr, 0},
                                         {"resetPin", required_argument, nullptr, 0},
                                         {"firmwareUpdate", required_argument, nullptr, 0},
+                                        {"getModes", required_argument, nullptr, 0},
                                         {"help", no_argument, nullptr, 'h'},
                                         {nullptr, 0, nullptr, 0}};
 
@@ -312,9 +327,10 @@ int main(int argc, char** argv) {
     const std::string arg(optarg ? optarg : "");
     if (c == 0) {
       const std::string name(long_options[idx].name);
-      if (name == "captureMode")
+      if (name == "captureMode") {
         adcam_mode = std::stoi(arg);
-      else if (name == "frame-limit")
+        capture_mode_specified = true;
+      } else if (name == "frame-limit")
         frame_limit = std::stoll(arg);
       else if (name == "hololink")
         hololink_ip = arg;
@@ -326,17 +342,18 @@ int main(int argc, char** argv) {
         reset_pin = std::stoi(arg);
       else if (name == "firmwareUpdate")
         firmware_manifest = arg;
+      else if (name == "getModes") {
+        get_modes = std::stoi(arg) != 0;
+      }
     } else if (c == 'h') {
-      std::cout << "Usage: holoscan_ros2_aditof_publisher [options]\n"
-                << "  --captureMode <0-9>       ADI capture mode (default 6)\n"
-                << "  --hololink <ip>           Hololink board IP (default 192.168.0.2)\n"
-                << "  --ibv-name <dev>          IBV device (empty = LinuxReceiverOp)\n"
-                << "  --ibv-port <n>            IBV port (default 1)\n"
-                << "  --frame-limit <n>         Stop after N frames (0=unlimited)\n"
-                << "  --resetPin <0-31>         Reset pin number\n"
-                << "  --firmwareUpdate <yaml>   Update firmware using manifest\n";
+      print_usage();
       return EXIT_SUCCESS;
     }
+  }
+
+  if (!get_modes && firmware_manifest.empty() && !capture_mode_specified) {
+    print_usage();
+    return EXIT_SUCCESS;
   }
 
   // ── Initialise CUDA ────────────────────────────────────────────────────────
@@ -386,11 +403,6 @@ int main(int argc, char** argv) {
   }
   HOLOSCAN_LOG_INFO("ADTF3175 Found");
 
-  // Read chip status and detect imager type (ADSD3100/ADTF3066).
-  // This sets imager_type_ internally so set_mode() in compose() works correctly.
-  adcam_inst->get_status();
-  adcam_inst->get_imager_type_and_ccb_version();
-
   if (!firmware_manifest.empty()) {
     hololink::Programmer::Args args;
     args.manifest = firmware_manifest;
@@ -404,6 +416,40 @@ int main(int argc, char** argv) {
     CudaCheck(cuDevicePrimaryCtxRelease(cu_device));
     return EXIT_SUCCESS;
   }
+
+  // Read chip status and detect imager type (ADSD3100/ADTF3066).
+  // This sets imager_type_ internally so set_mode() in compose() works correctly.
+  adcam_inst->get_status();
+  adcam_inst->get_imager_type_and_ccb_version();
+
+  // The CCB mode map is the firmware's source of truth for the user-defined
+  // capture modes available on this sensor module.
+  const auto ccb_modes = adcam_inst->read_modes_from_ccb();
+  const auto requested_mode = static_cast<uint8_t>(adcam_mode);
+  const auto requested_mode_it = std::find_if(
+      ccb_modes.begin(), ccb_modes.end(), [requested_mode](const auto& mode) {
+        return mode.user_defined_mode == requested_mode;
+      });
+  for (const auto& mode : ccb_modes) {
+    HOLOSCAN_LOG_INFO("CCB mode map: user-defined={} config={} resolution={}x{}",
+                      mode.user_defined_mode,
+                      mode.cfg_mode,
+                      mode.width,
+                      mode.height);
+  }
+  if (get_modes) {
+    hololink->stop();
+    CudaCheck(cuDevicePrimaryCtxRelease(cu_device));
+    rclcpp::shutdown();
+    return ccb_modes.empty() ? EXIT_FAILURE : EXIT_SUCCESS;
+  }
+  if (ccb_modes.empty() || requested_mode_it == ccb_modes.end()) {
+    HOLOSCAN_LOG_ERROR("Requested capture mode {} is unavailable in the CCB mode map", adcam_mode);
+    hololink->stop();
+    CudaCheck(cuDevicePrimaryCtxRelease(cu_device));
+    return EXIT_FAILURE;
+  }
+  HOLOSCAN_LOG_INFO("Requested capture mode {} is available in the CCB mode map", adcam_mode);
 
   // ── Run application ────────────────────────────────────────────────────────
   HoloscanApplication app(

@@ -206,7 +206,7 @@ class HoloscanPublisherApp(holoscan.core.Application):
 def main():
     parser = argparse.ArgumentParser(description="ADI ADTF3175 Holoscan ROS 2 Publisher")
     parser.add_argument(
-        "--captureMode", type=int, default=6, help="ADI capture mode (0-9, default 6)"
+        "--captureMode", type=int, help="ADI capture mode (0-9, required for streaming)"
     )
     parser.add_argument("--resetPin", type=int, default=0, help="GPIO reset pin (0-31, default 0)")
     parser.add_argument(
@@ -226,6 +226,13 @@ def main():
     )
     parser.add_argument(
         "--force", action="store_true", help="Allow firmware downgrade (requires --firmwareUpdate)"
+    )
+    parser.add_argument(
+        "--getModes",
+        type=int,
+        choices=(0, 1),
+        default=0,
+        help="Print the CCB capture mode map and exit when set to 1",
     )
 
     infiniband_devices = hololink_module.infiniband_devices()
@@ -249,7 +256,10 @@ def main():
     }
     logging.basicConfig(level=_log_map.get(args.log_level.lower(), logging.INFO))
 
-    if not (0 <= args.captureMode <= 9):
+    if args.captureMode is None and args.firmwareUpdate is None and not args.getModes:
+        print("Error: --captureMode is required for streaming")
+        sys.exit(1)
+    if args.captureMode is not None and not (0 <= args.captureMode <= 9):
         print(f"Error: --captureMode must be 0-9, got {args.captureMode}")
         sys.exit(1)
     if not (0 <= args.resetPin <= 31):
@@ -273,7 +283,7 @@ def main():
         hololink_channel,
         hololink_module.CAM_I2C_BUS,
         channel_metadata,
-        adcam_mode=args.captureMode,
+        adcam_mode=args.captureMode if args.captureMode is not None else 0,
         reset_pin=args.resetPin,
     )
 
@@ -292,6 +302,15 @@ def main():
         if len(v) >= 4:
             print(f"{label} Firmware version = {v[0]}.{v[1]}.{v[2]}.{v[3]}")
     adcam_inst.switch_from_burst_to_standard()
+
+    if not adcam_inst.probe_adcam_adtf3175():
+        logging.warning("ADTF3175 not responding after reset — retrying...")
+        adcam_inst.adcam_reset_power_on()
+        if not adcam_inst.probe_adcam_adtf3175():
+            logging.error("ADTF3175 not found — check connections")
+            hololink.stop()
+            sys.exit(1)
+    logging.info("ADTF3175 Found")
 
     # ── Firmware update via YAML manifest ─────────────────────────────────────
     if args.firmwareUpdate is not None:
@@ -361,16 +380,26 @@ def main():
         sys.exit(0 if result else 1)
     # ── End firmware update ───────────────────────────────────────────────────
 
-    if not adcam_inst.probe_adcam_adtf3175():
-        logging.warning("ADTF3175 not responding after reset — retrying...")
-        adcam_inst.adcam_reset_power_on()
-        if not adcam_inst.probe_adcam_adtf3175():
-            logging.error("ADTF3175 not found — check connections")
-            hololink.stop()
-            sys.exit(1)
-    logging.info("ADTF3175 Found")
-
     adcam_inst.get_imager_type_and_ccb_version()
+    ccb_modes = adcam_inst.read_modes_from_ccb()
+    for mode in ccb_modes:
+        logging.info(
+            "CCB mode map: user-defined=%s config=%s resolution=%sx%s",
+            mode.user_defined_mode,
+            mode.cfg_mode,
+            mode.width,
+            mode.height,
+        )
+    if args.getModes:
+        hololink.stop()
+        sys.exit(0 if ccb_modes else 1)
+    if not any(mode.user_defined_mode == args.captureMode for mode in ccb_modes):
+        logging.error(
+            "Requested capture mode %s is unavailable in the CCB mode map", args.captureMode
+        )
+        hololink.stop()
+        sys.exit(1)
+    logging.info("Requested capture mode %s is available in the CCB mode map", args.captureMode)
 
     app = HoloscanPublisherApp(
         cu_context,

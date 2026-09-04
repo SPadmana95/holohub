@@ -104,7 +104,7 @@ HolovizOp (side-by-side: Depth | AB | Confidence)
 ```sh
 # Build container (from holohub root) — used for both C++ and Python
 ./holohub build-container aditof --language cpp \
-  --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v3.9.0-cuda13
+  --base-img nvcr.io/nvidia/clara-holoscan/holoscan:v4.6.0-cuda13
 
 # Launch container
 ./holohub run-container aditof --language cpp

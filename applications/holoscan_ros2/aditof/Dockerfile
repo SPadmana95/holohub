@@ -128,6 +128,11 @@ RUN sed -i \
     's|microchip_polarfire_metadata\["board_description"\] = "Microchip Polarfire";|microchip_polarfire_metadata["board_description"] = "Microchip Polarfire";\n    microchip_polarfire_metadata["gpio_pin_count"] = 16;|' \
     /deps/holoscan-sensor-bridge/src/hololink/core/enumerator.cpp
 
+# HSB 2.5.0 assumes fmt::char_t is public; Holoscan's fmt 8 fallback does not expose it.
+RUN sed -i \
+    's|fmt::buffer_context<fmt::char_t<FormatT>>|fmt::format_context|' \
+    /deps/holoscan-sensor-bridge/src/hololink/core/logging_internal.hpp
+
 # Build holoscan-sensor-bridge C++ libraries
 WORKDIR /deps/holoscan-sensor-bridge
 RUN mkdir -p build
@@ -137,6 +142,11 @@ RUN cmake .. && make -j$(nproc)
 # Install holoscan-sensor-bridge Python package
 WORKDIR /deps/holoscan-sensor-bridge/python
 RUN pip3 install -e .
+
+# Install the wrapper-pinned holoscan-cli; the holohub CLI runs `holoscan build`
+# inside this container.
+COPY --chmod=755 holohub /tmp/scripts/
+RUN /tmp/scripts/holohub env-info
 
 # Set default working directory
 WORKDIR /workspace

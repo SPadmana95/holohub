@@ -1,0 +1,40 @@
+{
+	"application": {
+		"name": "Holoscan A2B Audio Visualization",
+		"authors": [
+			{
+				"name": "ADI Holoscan Team",
+				"affiliation": "Analog Devices Inc."
+			}
+		],
+		"language": "C++",
+		"version": "1.0.0",
+		"changelog": {
+			"1.0": "Initial Release — A2B audio beamforming and waveform visualization"
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "3.9",
+			"tested_versions": [
+				"3.9.0"
+			]
+		},
+		"dockerfile": "applications/holoscan_ros2/adi/a2baudio/Dockerfile",
+		"platforms": [
+			"aarch64"
+		],
+		"tags": ["Audio", "A2B", "ADI", "Beamforming", "HSB"],
+		"ranking": 1,
+		"requirements": {
+			"hardware": [
+				{
+					"name": "Hololink FPGA Board",
+					"description": "Holoscan Sensor Bridge (HSB) hardware with I2S/A2B audio capture"
+				}
+			]
+		},
+		"run": {
+			"command": "audio_viz_disp <holohub_data_dir>",
+			"workdir": "Holohub"
+		}
+	}
+}

@@ -1,0 +1,44 @@
+{
+	"application": {
+		"name": "Holoscan ADI IMU ROS 2 Bridge",
+		"authors": [
+			{
+				"name": "ADI Holoscan Team",
+				"affiliation": "Analog Devices Inc."
+			}
+		],
+		"language": "Python",
+		"version": "1.0.0",
+		"changelog": {
+			"1.0": "Initial Release — ADI IMU (ADIS16505-2/ADIS16607-2) ROS 2 bridge"
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "3.9",
+			"tested_versions": [
+				"3.9.0"
+			]
+		},
+		"dockerfile": "applications/holoscan_ros2/adi/adi_imu/Dockerfile",
+		"platforms": [
+			"aarch64"
+		],
+		"tags": ["Robotics", "ROS2", "IMU", "ADI", "ADIS16505", "ADIS16607"],
+		"ranking": 1,
+		"requirements": {
+			"hardware": [
+				{
+					"name": "Hololink FPGA Board",
+					"description": "Holoscan Sensor Bridge (HSB) hardware with SPI-connected IMU"
+				},
+				{
+					"name": "ADI IMU",
+					"description": "ADIS16505-2 or ADIS16607-2 precision IMU connected via SPI to HSB"
+				}
+			]
+		},
+		"run": {
+			"command": "python3 adi_imu_ros2.py <holohub_data_dir>",
+			"workdir": "Holohub"
+		}
+	}
+}

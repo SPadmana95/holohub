@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Portions Copyright (c) 2026 Analog Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ADI (Analog Devices) sensor applications for holoscan_ros2.
-add_holohub_application(aditof DEPENDS OPERATORS holoscan_ros2)
-add_holohub_application(a2baudio)
-add_holohub_application(adi_imu)
+# a2baudio: audio beamformer/waveform visualization over I2S via HSB
+cmake_minimum_required(VERSION 3.20)
+project(a2baudio LANGUAGES NONE)
+
+if(HOLOHUB_BUILD_CPP)
+  add_subdirectory(cpp)
+endif()

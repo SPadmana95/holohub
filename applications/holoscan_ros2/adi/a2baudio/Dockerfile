@@ -30,13 +30,13 @@ RUN apt update && apt install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone the ADI fork's branch: the a2baudio operators (audio_waveform,
-# audio_beamformer, audio_filewriter, i2s) only exist here, not in the
-# public nvidia-holoscan/holoscan-sensor-bridge upstream.
+# Clone Holoscan Sensor Bridge at tag 2.5.0 (public upstream)
+# (compatible with Holoscan SDK 3.9.0 — main branch requires SDK 4.0+)
 RUN mkdir -p /deps
 WORKDIR /deps
-RUN git clone --branch adi_3_1_0_hsb_tof_imu_a2b \
-    https://github.com/sibsankardey/holoscan-sensor-bridge.git
+RUN git clone https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git \
+    && cd holoscan-sensor-bridge \
+    && git checkout tags/2.5.0
 
 # Holoscan's fmt 8 fallback does not expose fmt::char_t as public.
 RUN sed -i \
@@ -46,14 +46,10 @@ RUN sed -i \
 WORKDIR /deps/holoscan-sensor-bridge
 RUN mkdir -p build
 WORKDIR /deps/holoscan-sensor-bridge/build
-# GPUNetIO RoCE needs DOCA packages not present in this image; tools/hsb_flasher
-# needs libcurl-dev. Neither is required to build audio_viz_disp.
-RUN cmake .. -DHOLOLINK_BUILD_GPUNETIO_ROCE=OFF -DHOLOLINK_BUILD_TOOLS=OFF \
-    && make -j$(nproc) audio_viz_disp
+RUN cmake .. && make -j$(nproc)
 
 # Install the wrapper-pinned holoscan-cli; the holohub CLI runs `holoscan build`
-# inside this container. a2baudio is C++-only, so no Python package install
-# (its editable-install packaging step is broken on this fork).
+# inside this container. a2baudio is C++-only, so no Python package install.
 COPY --chmod=755 holohub /tmp/scripts/
 RUN /tmp/scripts/holohub env-info
 

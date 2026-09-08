@@ -15,5 +15,5 @@
 
 # ADI (Analog Devices) sensor applications for holoscan_ros2.
 add_holohub_application(aditof DEPENDS OPERATORS holoscan_ros2)
-add_holohub_application(a2baudio)
-add_holohub_application(adi_imu)
+add_holohub_application(a2baudio DEPENDS OPERATORS holoscan_ros2 adi a2b_audio)
+add_holohub_application(adi_imu DEPENDS OPERATORS holoscan_ros2 adi adi_imu)

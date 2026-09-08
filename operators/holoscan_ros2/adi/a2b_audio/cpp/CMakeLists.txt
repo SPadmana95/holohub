@@ -13,16 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.20)
-project(holoscan_ros2_a2baudio)
-
 find_package(holoscan 3.0 REQUIRED CONFIG
              PATHS "/opt/nvidia/holoscan" "/workspace/holoscan-sdk/install")
 
 enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
 
-# Hololink paths (built from source; see Dockerfile)
+# Hololink core (built from source; see the consuming application's Dockerfile)
 set(HOLOLINK_ROOT "/deps/holoscan-sensor-bridge")
 set(HOLOLINK_BUILD_DIR "${HOLOLINK_ROOT}/build")
 set(HOLOLINK_INCLUDE_DIR "${HOLOLINK_ROOT}/src")
@@ -43,30 +40,40 @@ if(NOT TARGET hololink::hololink)
   add_library(hololink::hololink ALIAS hololink)
 endif()
 
-# ── audio_viz_disp executable ─────────────────────────────────────────────────
-# Captures I2S audio via HSB, beamforms it, and visualizes waveforms with HolovizOp.
-add_executable(audio_viz_disp
-    audio_viz.cpp
+# Waveform, beamformer, and file-writer operators for HSB I2S/A2B audio capture.
+# i2s_receiver_op.cpp/.hpp are excluded: they use a Hololink::I2s API that only
+# exists in the ADI fork, not the public holoscan-sensor-bridge release.
+add_library(a2b_audio STATIC
+    audio_waveform_op.cu
+    audio_beamformer_op.cpp
+    audio_beamformer_op.cu
+    audio_file_writer_op.cpp
 )
 
-target_link_libraries(audio_viz_disp PRIVATE
-    holoscan::core
-    holoscan::ops::holoviz
-    holoscan::ops::a2b_audio
-    CUDA::cudart
-    CUDA::cuda_driver
-    hololink::hololink
-    hololink_core
-    fmt
-)
+add_library(holoscan::ops::a2b_audio ALIAS a2b_audio)
 
-target_include_directories(audio_viz_disp PRIVATE
-    ${HOLOLINK_INCLUDE_DIR}
-)
-
-set_target_properties(audio_viz_disp PROPERTIES
+set_target_properties(a2b_audio PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     CUDA_SEPARABLE_COMPILATION ON
 )
 
-install(TARGETS audio_viz_disp DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_include_directories(a2b_audio
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE
+        ${HOLOLINK_INCLUDE_DIR}
+)
+
+target_link_libraries(a2b_audio
+    PUBLIC
+        holoscan::core
+        CUDA::cudart
+        cufft
+        hololink::hololink
+        hololink_core
+        linux_receiver_op
+        linux_receiver
+        base_receiver_op
+        fmt
+)

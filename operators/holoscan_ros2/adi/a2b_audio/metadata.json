@@ -1,0 +1,27 @@
+{
+	"operator": {
+		"name": "A2B Audio Operators",
+		"authors": [
+			{
+				"name": "ADI Holoscan Team",
+				"affiliation": "Analog Devices Inc."
+			}
+		],
+		"language": "C++",
+		"version": "1.0.0",
+		"changelog": {
+			"1.0": "Initial Release — audio waveform, beamformer, and file writer operators for HSB I2S/A2B audio"
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "3.9",
+			"tested_versions": [
+				"3.9.0"
+			]
+		},
+		"platforms": [
+			"aarch64"
+		],
+		"tags": ["Audio", "A2B", "ADI", "Beamforming", "HSB"],
+		"ranking": 1
+	}
+}

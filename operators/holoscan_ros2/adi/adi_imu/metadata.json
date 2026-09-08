@@ -1,0 +1,27 @@
+{
+	"operator": {
+		"name": "ADI IMU Operator",
+		"authors": [
+			{
+				"name": "ADI Holoscan Team",
+				"affiliation": "Analog Devices Inc."
+			}
+		],
+		"language": "C++",
+		"version": "1.0.0",
+		"changelog": {
+			"1.0": "Initial Release — SPI driver operator for ADIS16505-2/ADIS16607-2 IMUs over HSB"
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "3.9",
+			"tested_versions": [
+				"3.9.0"
+			]
+		},
+		"platforms": [
+			"aarch64"
+		],
+		"tags": ["IMU", "ADI", "ADIS16505", "ADIS16607", "HSB", "SPI"],
+		"ranking": 1
+	}
+}

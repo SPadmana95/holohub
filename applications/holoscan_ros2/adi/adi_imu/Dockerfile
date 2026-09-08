@@ -59,22 +59,25 @@ exec "$@"' > /usr/bin/entrypoint.sh && chmod +x /usr/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
-# Clone the ADI fork's branch: the adi_imu operator (native driver + pybind
-# module) only exists here, not in the public nvidia-holoscan upstream.
+# Clone Holoscan Sensor Bridge at tag 2.5.0 (public upstream). The adi_imu
+# operator's SPI/GPIO usage is fully supported by this public release, so no
+# fork clone is needed; the operator sources live under
+# operators/holoscan_ros2/adi_imu/ in this repo.
 RUN mkdir -p /deps
 WORKDIR /deps
-RUN git clone --branch adi_3_1_0_hsb_tof_imu_a2b \
-    https://github.com/sibsankardey/holoscan-sensor-bridge.git
+RUN git clone https://github.com/nvidia-holoscan/holoscan-sensor-bridge.git \
+    && cd holoscan-sensor-bridge \
+    && git checkout tags/2.5.0
 
 # Holoscan's fmt 8 fallback does not expose fmt::char_t as public.
 RUN sed -i \
     's|fmt::buffer_context<fmt::char_t<FormatT>>|fmt::format_context|' \
     /deps/holoscan-sensor-bridge/src/hololink/core/logging_internal.hpp
 
-WORKDIR /deps/holoscan-sensor-bridge/python
-# Non-editable install: the editable-wheel layout check in this fork's
-# setup.py fails on the hololink_module absolute package_dir mapping.
-RUN pip3 install .
+WORKDIR /deps/holoscan-sensor-bridge
+RUN mkdir -p build
+WORKDIR /deps/holoscan-sensor-bridge/build
+RUN cmake .. && make -j$(nproc)
 
 # Install the wrapper-pinned holoscan-cli; the holohub CLI runs `holoscan build`
 # inside this container.

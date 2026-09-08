@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,19 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.5)
-project(holoscan_ros2_operators)
+include(pybind11_add_holohub_module)
 
-find_package(holoscan 3.0 REQUIRED CONFIG
-             PATHS "/opt/nvidia/holoscan" "/workspace/holoscan-sdk/install")
-
-add_subdirectory(cpp)
-
-# Python equivalent
-if(HOLOHUB_BUILD_PYTHON)
-  add_subdirectory(python)
-endif()
-
-# ADI sensor operators (require HSB to be installed in the container)
-add_holohub_operator(adi)
-
+# The compiled module is named _adi_imu_op (see PYBIND11_MODULE(_adi_imu_op, ...)
+# in adi_imu_op_python.cpp), so the Python module name must match.
+pybind11_add_holohub_module(
+    CPP_CMAKE_TARGET adi_imu
+    PYTHON_MODULE_NAME adi_imu_op
+    CLASS_NAME create_imu_operator
+    SOURCES adi_imu_op_python.cpp
+)

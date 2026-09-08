@@ -25,10 +25,30 @@ FROM ${BASE_IMAGE} AS a2baudio
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
 RUN apt update && apt install -y \
+    curl \
+    gnupg \
+    lsb-release \
+    software-properties-common \
     git \
     libcurl4-openssl-dev \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+RUN apt update && apt install -y \
+    ros-jazzy-ros-base \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV ROS_DISTRO=jazzy
+ENV ROS_VERSION=2
+ENV ROS_PYTHON_VERSION=3
+ENV CMAKE_PREFIX_PATH=/opt/ros/jazzy:/opt/nvidia/holoscan
+ENV AMENT_PREFIX_PATH=/opt/ros/jazzy
+ENV LD_LIBRARY_PATH=/opt/ros/jazzy/lib:/opt/nvidia/holoscan/lib:$LD_LIBRARY_PATH
+ENV PATH=/opt/ros/jazzy/bin:$PATH
+ENV PYTHONPATH=/opt/ros/jazzy/lib/python3.12/site-packages:/opt/nvidia/holoscan/python/lib
 
 # Clone Holoscan Sensor Bridge at tag 2.5.0 (public upstream)
 # (compatible with Holoscan SDK 3.9.0 — main branch requires SDK 4.0+)

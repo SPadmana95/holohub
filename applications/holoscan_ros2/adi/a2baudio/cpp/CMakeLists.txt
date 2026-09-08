@@ -16,6 +16,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(holoscan_ros2_a2baudio)
 
+find_package(rclcpp REQUIRED HINTS /opt/ros/jazzy)
+find_package(std_msgs REQUIRED)
+
 find_package(holoscan 3.0 REQUIRED CONFIG
              PATHS "/opt/nvidia/holoscan" "/workspace/holoscan-sdk/install")
 
@@ -70,3 +73,18 @@ set_target_properties(audio_viz_disp PROPERTIES
 )
 
 install(TARGETS audio_viz_disp DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+add_executable(a2b_audio_ros2_publisher a2b_audio_ros2_publisher.cpp)
+target_link_libraries(a2b_audio_ros2_publisher PRIVATE ${rclcpp_LIBRARIES} ${std_msgs_LIBRARIES})
+target_include_directories(a2b_audio_ros2_publisher PRIVATE ${rclcpp_INCLUDE_DIRS} ${std_msgs_INCLUDE_DIRS})
+
+add_executable(a2b_audio_ros2_subscriber a2b_audio_ros2_subscriber.cpp)
+target_link_libraries(a2b_audio_ros2_subscriber PRIVATE ${rclcpp_LIBRARIES} ${std_msgs_LIBRARIES})
+target_include_directories(a2b_audio_ros2_subscriber PRIVATE ${rclcpp_INCLUDE_DIRS} ${std_msgs_INCLUDE_DIRS})
+
+install(TARGETS a2b_audio_ros2_publisher a2b_audio_ros2_subscriber
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(DIRECTORY ../python/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/holohub/adi/a2baudio/python
+    FILES_MATCHING PATTERN "*.py")

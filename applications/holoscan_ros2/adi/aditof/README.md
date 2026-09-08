@@ -11,7 +11,7 @@ It extends `holoscan-sensor-bridge/examples/aditof/cpp/adcam_player` by replacin
 ## File Structure
 
 ```
-applications/holoscan_ros2/aditof/
+applications/holoscan_ros2/adi/aditof/
 ├── CMakeLists.txt          # Top-level build — C++ only
 ├── Dockerfile              # Shared container for C++ and Python
 ├── adi_manifest.yaml       # Firmware manifest for ADI ADTF3175 sensor
@@ -153,7 +153,7 @@ Update sensor firmware using the manifest file. `adi_manifest.yaml` is in the
 application directory; the command uses its absolute container path.
 
 ```sh
-./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
+./holohub run aditof publisher --language cpp --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/adi/aditof/adi_manifest.yaml"
 ```
 
 **All `--run-args` options (C++):**
@@ -186,7 +186,7 @@ Set capture mode and start streaming.
 Update sensor firmware using the manifest file.
 
 ```sh
-./holohub run aditof publisher --language python --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/aditof/adi_manifest.yaml"
+./holohub run aditof publisher --language python --run-args="--firmwareUpdate /workspace/holohub/applications/holoscan_ros2/adi/aditof/adi_manifest.yaml"
 ```
 
 **All `--run-args` options (Python):**

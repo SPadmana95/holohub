@@ -18,7 +18,7 @@
                                 "3.9.0"
                         ]
                 },
-                "dockerfile": "applications/holoscan_ros2/aditof/Dockerfile",
+                "dockerfile": "applications/holoscan_ros2/adi/aditof/Dockerfile",
                 "platforms": [
                         "aarch64"
                 ],
